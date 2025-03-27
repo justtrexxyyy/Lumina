@@ -105,32 +105,40 @@ module.exports = {
                     timestamp: true
                 });
                 
-                // Add control buttons
-                const row = new ActionRowBuilder()
+                // Add control buttons in two rows to fit all buttons
+                const row1 = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
                             .setCustomId('pause_resume')
                             .setLabel(player.paused ? 'Resume' : 'Pause')
-                            .setStyle(ButtonStyle.Primary)
-                            .setEmoji(player.paused ? config.emojis.play : config.emojis.pause),
+                            .setStyle(ButtonStyle.Primary),
                         new ButtonBuilder()
                             .setCustomId('skip')
                             .setLabel('Skip')
-                            .setStyle(ButtonStyle.Secondary)
-                            .setEmoji(config.emojis.skip),
+                            .setStyle(ButtonStyle.Secondary),
                         new ButtonBuilder()
                             .setCustomId('stop')
                             .setLabel('Stop')
                             .setStyle(ButtonStyle.Danger)
-                            .setEmoji(config.emojis.stop),
+                    );
+                
+                const row2 = new ActionRowBuilder()
+                    .addComponents(
                         new ButtonBuilder()
                             .setCustomId('queue')
                             .setLabel('Queue')
+                            .setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder()
+                            .setCustomId('loop')
+                            .setLabel('Loop')
+                            .setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder()
+                            .setCustomId('lyrics')
+                            .setLabel('Lyrics')
                             .setStyle(ButtonStyle.Secondary)
-                            .setEmoji(config.emojis.queue)
                     );
 
-                await interaction.editReply({ embeds: [trackEmbed], components: [row] });
+                await interaction.editReply({ embeds: [trackEmbed], components: [row1, row2] });
             }
             
             // Start playback if not already playing

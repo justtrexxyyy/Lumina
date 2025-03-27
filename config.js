@@ -4,7 +4,7 @@ module.exports = {
     botDescription: 'Advanced music bot with high-quality audio playback and extensive playlist management features.',
     embedColor: '#5865F2',
     defaultVolume: 50,
-    supportServer: process.env.SUPPORT_SERVER || 'https://discord.gg/yourserver',
+    supportServer: process.env.SUPPORT_SERVER || 'https://discord.gg/discord-api',
     lavalink: {
         nodes: [
             {

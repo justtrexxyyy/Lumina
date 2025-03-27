@@ -87,12 +87,96 @@ module.exports = {
                         break;
                         
                     case 'queue':
+                        // Create a temporary interaction object with options for the queue command
+                        // We need to modify the interaction to work with the queue command
+                        const queueInteraction = {
+                            ...interaction,
+                            options: {
+                                getInteger: () => 1, // Return page 1 by default
+                                data: []
+                            },
+                            commandName: 'queue'
+                        };
+                        
                         const queueCommand = client.commands.get('queue');
                         if (queueCommand) {
-                            await queueCommand.execute(interaction);
+                            await queueCommand.execute(queueInteraction);
                         } else {
                             await interaction.reply({ 
                                 embeds: [errorEmbed('Queue command not found!')],
+                                ephemeral: true 
+                            });
+                        }
+                        break;
+                        
+                    case 'loop':
+                        // Handle loop mode cycling: off > track > queue > off
+                        const loopModes = ['off', 'track', 'queue'];
+                        const currentIndex = loopModes.indexOf(player.loop || 'off');
+                        const nextIndex = (currentIndex + 1) % loopModes.length;
+                        const nextMode = loopModes[nextIndex];
+                        
+                        player.setLoop(nextMode);
+                        
+                        await interaction.reply({ 
+                            embeds: [successEmbed(`Loop mode set to: ${nextMode}`)],
+                            ephemeral: true 
+                        });
+                        break;
+                        
+                    case 'lyrics':
+                        try {
+                            const track = player.queue.current;
+                            if (!track) {
+                                return interaction.reply({ 
+                                    embeds: [errorEmbed('No track currently playing!')],
+                                    ephemeral: true 
+                                });
+                            }
+                            
+                            // Get artist and title
+                            const title = track.title;
+                            // Extract artist from title (format is usually "Artist - Title")
+                            let artist = title.includes('-') ? title.split('-')[0].trim() : '';
+                            
+                            // Create lyrics embed
+                            const lyricsEmbed = createEmbed({
+                                title: `📃 Lyrics for ${track.title}`,
+                                description: `Searching for lyrics using [LrcLib.net](https://lrclib.net/search?q=${encodeURIComponent(title)})...\n\nLyrics will open in your browser.`,
+                                thumbnail: track.thumbnail,
+                                fields: [
+                                    {
+                                        name: 'Track',
+                                        value: track.title,
+                                        inline: true
+                                    },
+                                    {
+                                        name: 'Artist',
+                                        value: artist || 'Unknown',
+                                        inline: true
+                                    }
+                                ],
+                                footer: 'Powered by LrcLib.net',
+                                timestamp: true
+                            });
+                            
+                            await interaction.reply({ 
+                                embeds: [lyricsEmbed],
+                                components: [
+                                    new ActionRowBuilder()
+                                        .addComponents(
+                                            new ButtonBuilder()
+                                                .setLabel('Search Lyrics')
+                                                .setStyle(ButtonStyle.Link)
+                                                .setURL(`https://lrclib.net/search?q=${encodeURIComponent(title)}`)
+                                        )
+                                ],
+                                ephemeral: false
+                            });
+                        } catch (error) {
+                            console.error('Error fetching lyrics:', error);
+                            await interaction.reply({ 
+                                embeds: [errorEmbed('Error fetching lyrics. Please try again later.')],
                                 ephemeral: true 
                             });
                         }
