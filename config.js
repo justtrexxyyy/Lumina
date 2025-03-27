@@ -1,6 +1,6 @@
 module.exports = {
     botName: 'Audic',
-    botLogo: 'https://i.imgur.com/6YpBZzs.png', // Default music note logo
+    botLogo: 'https://imgur.com/a/nwcB4b0', // Updated logo link
     botDescription: 'Advanced music bot with high-quality audio playback and extensive playlist management features.',
     embedColor: '#5865F2',
     defaultVolume: 50,

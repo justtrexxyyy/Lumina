@@ -44,7 +44,7 @@ module.exports = {
         // Full fields to match the screenshot
         const fields = [
             {
-                name: isStream ? '🔴 LIVE' : `[${createProgressBar(position, duration)}]\n(${Math.floor((position / duration) * 100)}%)\n${positionFormatted} / ${durationFormatted}`,
+                name: isStream ? 'LIVE' : `[${createProgressBar(position, duration)}]\n(${Math.floor((position / duration) * 100)}%)\n${positionFormatted} / ${durationFormatted}`,
                 value: '\u200B',
                 inline: false
             },
@@ -60,7 +60,7 @@ module.exports = {
             },
             {
                 name: 'Duration',
-                value: isStream ? '🔴 LIVE' : durationFormatted,
+                value: isStream ? 'LIVE' : durationFormatted,
                 inline: false
             },
             {
@@ -81,7 +81,7 @@ module.exports = {
         ];
         
         const npEmbed = createEmbed({
-            title: `🎵 Now Playing`,
+            title: `Now Playing`,
             description: `[${current.title}](${current.uri})`,
             fields: fields,
             thumbnail: current.thumbnail,
