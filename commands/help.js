@@ -47,16 +47,13 @@ module.exports = {
             timestamp: true
         });
 
+        // Create button row with only invite button to avoid URL validation issues
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
                     .setLabel('Invite Bot')
                     .setStyle(ButtonStyle.Link)
-                    .setURL(`https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=277083450432&scope=bot%20applications.commands`),
-                new ButtonBuilder()
-                    .setLabel('Support Server')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(config.supportServer)
+                    .setURL(`https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID || '123456789012345678'}&permissions=277083450432&scope=bot%20applications.commands`)
             );
         
         await interaction.reply({ embeds: [helpEmbed], components: [row] });

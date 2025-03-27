@@ -87,39 +87,61 @@ module.exports = {
                         break;
                         
                     case 'queue':
-                        // Create a temporary interaction object with options for the queue command
-                        // We need to modify the interaction to work with the queue command
-                        const queueInteraction = {
-                            ...interaction,
-                            options: {
-                                getInteger: () => 1, // Return page 1 by default
-                                data: []
-                            },
-                            commandName: 'queue'
-                        };
-                        
-                        const queueCommand = client.commands.get('queue');
-                        if (queueCommand) {
-                            await queueCommand.execute(queueInteraction);
-                        } else {
+                        try {
+                            // We need to properly handle the queue button by creating an interaction
+                            // that the queue command can understand and use
+                            
+                            // First, get the queue command
+                            const queueCommand = client.commands.get('queue');
+                            if (!queueCommand) {
+                                return await interaction.reply({ 
+                                    embeds: [errorEmbed('Queue command not found!')],
+                                    ephemeral: true 
+                                });
+                            }
+                            
+                            // Create a modified interaction that mimics a slash command interaction
+                            // with the proper structure that the queue command expects
+                            const modifiedInteraction = {
+                                ...interaction,
+                                options: {
+                                    getInteger: (name) => name === 'page' ? 1 : null,
+                                },
+                                commandName: 'queue',
+                                client: client,
+                                reply: interaction.reply.bind(interaction),
+                                followUp: interaction.followUp.bind(interaction),
+                                editReply: interaction.editReply.bind(interaction)
+                            };
+                            
+                            // Execute the queue command with our modified interaction
+                            await queueCommand.execute(modifiedInteraction);
+                        } catch (error) {
+                            console.error('Error handling queue button:', error);
                             await interaction.reply({ 
-                                embeds: [errorEmbed('Queue command not found!')],
+                                embeds: [errorEmbed(`Failed to show queue: ${error.message}`)],
                                 ephemeral: true 
                             });
                         }
                         break;
                         
                     case 'loop':
-                        // Handle loop mode cycling: off > track > queue > off
-                        const loopModes = ['off', 'track', 'queue'];
-                        const currentIndex = loopModes.indexOf(player.loop || 'off');
+                        // Handle loop mode cycling: none > track > queue > none
+                        // Kazagumo uses 'none', 'track', 'queue' as valid loop modes
+                        const loopModes = ['none', 'track', 'queue'];
+                        const currentMode = player.loop || 'none';
+                        const currentIndex = loopModes.indexOf(currentMode);
                         const nextIndex = (currentIndex + 1) % loopModes.length;
                         const nextMode = loopModes[nextIndex];
                         
                         player.setLoop(nextMode);
                         
+                        const modeName = nextMode === 'none' ? 'Off' : 
+                                         nextMode === 'track' ? 'Current Track' : 
+                                         'Queue';
+                        
                         await interaction.reply({ 
-                            embeds: [successEmbed(`Loop mode set to: ${nextMode}`)],
+                            embeds: [successEmbed(`Loop mode set to: ${modeName}`)],
                             ephemeral: true 
                         });
                         break;
