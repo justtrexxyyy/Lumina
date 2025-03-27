@@ -36,10 +36,9 @@ module.exports = {
             'UseVAD'
         ];
         
-        // Calculate permission value
-        const permissions = requiredPermissions.map(perm => {
-            return BigInt(interaction.client.application.commands.permissions.Flags[perm] || 0n);
-        }).reduce((acc, perm) => acc | perm, 0n);
+        // Use a fixed permission code instead of calculating it
+        // This fixed value covers all the permissions we need (277083450432)
+        const permissions = 277083450432;
         
         const inviteLink = `https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=${permissions}&scope=bot%20applications.commands`;
         
