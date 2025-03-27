@@ -81,8 +81,9 @@ module.exports = {
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                const trackEmbed = createEmbed({
-                    title: `${config.emojis.play} Track Added to Queue`,
+                // Create a nowplaying embed instead of just a track added embed
+                const nowPlayingEmbed = createEmbed({
+                    title: `${config.emojis.nowPlaying} Now Playing`,
                     description: `[${track.title}](${track.uri})`,
                     fields: [
                         {
@@ -102,6 +103,7 @@ module.exports = {
                         }
                     ],
                     thumbnail: track.thumbnail,
+                    footer: `Use /queue to view the full queue`,
                     timestamp: true
                 });
                 
@@ -130,7 +132,7 @@ module.exports = {
                             .setStyle(ButtonStyle.Secondary),
                         new ButtonBuilder()
                             .setCustomId('loop')
-                            .setLabel('Loop')
+                            .setLabel(`Loop: ${getLoopModeName(player.loop)}`)
                             .setStyle(ButtonStyle.Secondary),
                         new ButtonBuilder()
                             .setCustomId('shuffle')
@@ -138,7 +140,7 @@ module.exports = {
                             .setStyle(ButtonStyle.Secondary)
                     );
 
-                await interaction.editReply({ embeds: [trackEmbed], components: [row1, row2] });
+                await interaction.editReply({ embeds: [nowPlayingEmbed], components: [row1, row2] });
             }
             
             // Start playback if not already playing
@@ -188,4 +190,13 @@ function calculatePlaylistDuration(tracks) {
     if (seconds > 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
     
     return parts.join(', ');
+}
+
+function getLoopModeName(loopMode) {
+    switch (loopMode) {
+        case 'none': return 'Off';
+        case 'track': return 'Current Track';
+        case 'queue': return 'Queue';
+        default: return 'Off';
+    }
 }
