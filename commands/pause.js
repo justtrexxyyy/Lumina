@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('pause')
-        .setDescription('⏸️ Pause current playback'),
+        .setDescription('Pause current playback'),
     
     async execute(interaction) {
         const { client } = interaction;

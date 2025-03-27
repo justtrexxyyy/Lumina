@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stop')
-        .setDescription('⏹️ Stop and disconnect'),
+        .setDescription('Stop and disconnect'),
     
     async execute(interaction) {
         const { client } = interaction;

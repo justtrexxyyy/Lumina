@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('volume')
-        .setDescription('🔊 Adjust volume (0-100)')
+        .setDescription('Adjust volume (0-100)')
         .addIntegerOption(option => 
             option.setName('level')
                 .setDescription('Volume level (0-100)')

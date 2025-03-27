@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('loop')
-        .setDescription('🔁 Set loop mode')
+        .setDescription('Set loop mode')
         .addStringOption(option => 
             option.setName('mode')
                 .setDescription('Loop mode to set')

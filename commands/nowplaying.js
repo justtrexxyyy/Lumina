@@ -6,7 +6,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('nowplaying')
-        .setDescription('🎵 Show current track'),
+        .setDescription('Show current track'),
     
     async execute(interaction) {
         const { client } = interaction;

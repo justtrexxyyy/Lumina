@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('shuffle')
-        .setDescription('🔀 Shuffle the queue'),
+        .setDescription('Shuffle the queue'),
     
     async execute(interaction) {
         const { client } = interaction;

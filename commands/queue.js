@@ -6,7 +6,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('queue')
-        .setDescription('📜 View current queue')
+        .setDescription('View current queue')
         .addIntegerOption(option => 
             option.setName('page')
                 .setDescription('Page number to view')

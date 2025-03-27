@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('resume')
-        .setDescription('▶️ Resume playback'),
+        .setDescription('Resume playback'),
     
     async execute(interaction) {
         const { client } = interaction;

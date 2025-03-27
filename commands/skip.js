@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('skip')
-        .setDescription('⏭️ Skip to next song')
+        .setDescription('Skip to next song')
         .addIntegerOption(option => 
             option.setName('amount')
                 .setDescription('Number of tracks to skip (default: 1)')
