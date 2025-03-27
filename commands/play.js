@@ -81,48 +81,33 @@ module.exports = {
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                // Create a simplified nowplaying embed
-                const nowPlayingEmbed = createEmbed({
-                    title: `🎵 Now Playing`,
+                // Create track added embed
+                const trackEmbed = createEmbed({
+                    title: `${config.emojis.play} Track Added to Queue`,
                     description: `[${track.title}](${track.uri})`,
                     fields: [
                         {
                             name: 'Duration',
                             value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
-                            inline: false
+                            inline: true
+                        },
+                        {
+                            name: 'Position in Queue',
+                            value: `#${player.queue.size}`,
+                            inline: true
                         },
                         {
                             name: 'Requested By',
                             value: `<@${interaction.user.id}>`,
-                            inline: false
+                            inline: true
                         }
                     ],
                     thumbnail: track.thumbnail,
                     timestamp: true
                 });
-                
-                // Add control buttons in a single row
-                const row = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('pause_resume')
-                            .setLabel(player.paused ? 'Resume' : 'Pause')
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setCustomId('skip')
-                            .setLabel('Skip')
-                            .setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder()
-                            .setCustomId('stop')
-                            .setLabel('Stop')
-                            .setStyle(ButtonStyle.Danger),
-                        new ButtonBuilder()
-                            .setCustomId('loop')
-                            .setLabel(`Loop: ${getLoopModeName(player.loop)}`)
-                            .setStyle(ButtonStyle.Secondary)
-                    );
 
-                await interaction.editReply({ embeds: [nowPlayingEmbed], components: [row] });
+                // No buttons
+                await interaction.editReply({ embeds: [trackEmbed] });
             }
             
             // Start playback if not already playing

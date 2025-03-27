@@ -41,62 +41,26 @@ module.exports = {
         // Get source platform
         const sourcePlatform = getSourcePlatform(current.uri);
         
-        // Create embed fields
+        // Simplified fields to match screenshot
         const fields = [
+            {
+                name: 'Duration',
+                value: isStream ? '🔴 LIVE' : durationFormatted,
+                inline: false
+            },
             {
                 name: 'Requested By',
                 value: `<@${current.requester.id}>`,
-                inline: true
-            },
-            {
-                name: 'Source',
-                value: sourcePlatform,
-                inline: true
+                inline: false
             }
         ];
         
-        // Add duration/position for non-streams
-        if (!isStream) {
-            fields.push({
-                name: 'Duration',
-                value: durationFormatted,
-                inline: true
-            });
-        } else {
-            fields.push({
-                name: 'Duration',
-                value: '🔴 LIVE',
-                inline: true
-            });
-        }
-        
-        // Add current volume
-        fields.push({
-            name: 'Volume',
-            value: `${player.volume}%`,
-            inline: true
-        });
-        
-        // Add loop mode
-        fields.push({
-            name: 'Loop Mode',
-            value: getLoopModeName(player.loop),
-            inline: true
-        });
-        
-        // Add queue size
-        fields.push({
-            name: 'Queue',
-            value: `${player.queue.length} track${player.queue.length !== 1 ? 's' : ''}`,
-            inline: true
-        });
-        
         const npEmbed = createEmbed({
-            title: `${config.emojis.nowPlaying} Now Playing`,
-            description: `[${current.title}](${current.uri})${progressBar ? `\n\n${progressBar}` : ''}`,
+            title: `🎵 Now Playing`,
+            description: `[${current.title}](${current.uri})`,
             fields: fields,
             thumbnail: current.thumbnail,
-            footer: `Use /queue to view the full queue`,
+
             timestamp: true
         });
         
