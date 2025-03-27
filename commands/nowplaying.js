@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const { formatDuration, createProgressBar } = require('../utils/formatters');
 const config = require('../config');
@@ -100,7 +100,39 @@ module.exports = {
             timestamp: true
         });
         
-        await interaction.reply({ embeds: [npEmbed] });
+        // Create control buttons
+        const row1 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('pause_resume')
+                    .setLabel(player.paused ? 'Resume' : 'Pause')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('skip')
+                    .setLabel('Skip')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('stop')
+                    .setLabel('Stop')
+                    .setStyle(ButtonStyle.Danger)
+            );
+        
+        const row2 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('queue')
+                    .setLabel('Queue')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('loop')
+                    .setLabel('Loop: ' + getLoopModeName(player.loop))
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        await interaction.reply({ 
+            embeds: [npEmbed],
+            components: [row1, row2]
+        });
     },
 };
 
