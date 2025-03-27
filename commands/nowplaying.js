@@ -126,6 +126,10 @@ module.exports = {
                 new ButtonBuilder()
                     .setCustomId('loop')
                     .setLabel('Loop: ' + getLoopModeName(player.loop))
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('shuffle')
+                    .setLabel('Shuffle')
                     .setStyle(ButtonStyle.Secondary)
             );
         

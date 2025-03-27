@@ -133,8 +133,8 @@ module.exports = {
                             .setLabel('Loop')
                             .setStyle(ButtonStyle.Secondary),
                         new ButtonBuilder()
-                            .setCustomId('lyrics')
-                            .setLabel('Lyrics')
+                            .setCustomId('shuffle')
+                            .setLabel('Shuffle')
                             .setStyle(ButtonStyle.Secondary)
                     );
 

@@ -108,7 +108,11 @@ module.exports = {
                                 options: {
                                     getInteger: (name) => name === 'page' ? 1 : null,
                                 },
+                                user: interaction.user,
+                                member: interaction.member,
                                 commandName: 'queue',
+                                guildId: interaction.guildId,
+                                guild: interaction.guild,
                                 client: client,
                                 reply: interaction.reply.bind(interaction),
                                 followUp: interaction.followUp.bind(interaction),
@@ -147,63 +151,30 @@ module.exports = {
                         });
                         break;
                         
-                    case 'lyrics':
+                    case 'shuffle':
                         try {
-                            const track = player.queue.current;
-                            if (!track) {
-                                return interaction.reply({ 
-                                    embeds: [errorEmbed('No track currently playing!')],
-                                    ephemeral: true 
+                            if (player.queue.length < 2) {
+                                return interaction.reply({
+                                    embeds: [errorEmbed('Need at least 2 tracks in the queue to shuffle!')],
+                                    ephemeral: true
                                 });
                             }
                             
-                            // Get artist and title
-                            const title = track.title;
-                            // Extract artist from title (format is usually "Artist - Title")
-                            let artist = title.includes('-') ? title.split('-')[0].trim() : '';
+                            player.queue.shuffle();
                             
-                            // Create lyrics embed
-                            const lyricsEmbed = createEmbed({
-                                title: `📃 Lyrics for ${track.title}`,
-                                description: `Searching for lyrics using [LrcLib.net](https://lrclib.net/search?q=${encodeURIComponent(title)})...\n\nLyrics will open in your browser.`,
-                                thumbnail: track.thumbnail,
-                                fields: [
-                                    {
-                                        name: 'Track',
-                                        value: track.title,
-                                        inline: true
-                                    },
-                                    {
-                                        name: 'Artist',
-                                        value: artist || 'Unknown',
-                                        inline: true
-                                    }
-                                ],
-                                footer: 'Powered by LrcLib.net',
-                                timestamp: true
-                            });
-                            
-                            await interaction.reply({ 
-                                embeds: [lyricsEmbed],
-                                components: [
-                                    new ActionRowBuilder()
-                                        .addComponents(
-                                            new ButtonBuilder()
-                                                .setLabel('Search Lyrics')
-                                                .setStyle(ButtonStyle.Link)
-                                                .setURL(`https://lrclib.net/search?q=${encodeURIComponent(title)}`)
-                                        )
-                                ],
-                                ephemeral: false
+                            await interaction.reply({
+                                embeds: [successEmbed(`${config.emojis.shuffle || '🔀'} Successfully shuffled ${player.queue.length} tracks in the queue`)],
+                                ephemeral: true
                             });
                         } catch (error) {
-                            console.error('Error fetching lyrics:', error);
-                            await interaction.reply({ 
-                                embeds: [errorEmbed('Error fetching lyrics. Please try again later.')],
-                                ephemeral: true 
+                            console.error('Error shuffling queue:', error);
+                            await interaction.reply({
+                                embeds: [errorEmbed(`Failed to shuffle queue: ${error.message}`)],
+                                ephemeral: true
                             });
                         }
                         break;
+                        
                         
                     default:
                         await interaction.reply({ 
