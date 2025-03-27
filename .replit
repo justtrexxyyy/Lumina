@@ -1,0 +1,51 @@
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "music_bot_workflow"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "DiscordMusicBot"
+
+[[workflows.workflow]]
+name = "music_bot_workflow"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "ls -la && node -v && npm -v"
+
+[[workflows.workflow]]
+name = "DiscordMusicBot"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install && node index.js"
+
+[deployment]
+run = ["sh", "-c", "npm install && node index.js"]
