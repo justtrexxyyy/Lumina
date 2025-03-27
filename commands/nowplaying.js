@@ -41,16 +41,41 @@ module.exports = {
         // Get source platform
         const sourcePlatform = getSourcePlatform(current.uri);
         
-        // Simplified fields to match screenshot
+        // Full fields to match the screenshot
         const fields = [
+            {
+                name: isStream ? '🔴 LIVE' : `[${createProgressBar(position, duration)}]\n(${Math.floor((position / duration) * 100)}%)\n${positionFormatted} / ${durationFormatted}`,
+                value: '\u200B',
+                inline: false
+            },
+            {
+                name: 'Requested By',
+                value: `<@${current.requester.id}>`,
+                inline: false
+            },
+            {
+                name: 'Source',
+                value: sourcePlatform,
+                inline: false
+            },
             {
                 name: 'Duration',
                 value: isStream ? '🔴 LIVE' : durationFormatted,
                 inline: false
             },
             {
-                name: 'Requested By',
-                value: `<@${current.requester.id}>`,
+                name: 'Volume',
+                value: `${player.volume}%`,
+                inline: false
+            },
+            {
+                name: 'Loop Mode',
+                value: getLoopModeName(player.loop),
+                inline: false
+            },
+            {
+                name: 'Queue',
+                value: `${player.queue.length} track${player.queue.length !== 1 ? 's' : ''}`,
                 inline: false
             }
         ];
@@ -60,8 +85,7 @@ module.exports = {
             description: `[${current.title}](${current.uri})`,
             fields: fields,
             thumbnail: current.thumbnail,
-
-            timestamp: true
+            footer: `Use /queue to view the full queue`
         });
         
         // No buttons for nowplaying command as requested
