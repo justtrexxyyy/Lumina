@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ping')
-        .setDescription('📡 Check latency'),
+        .setDescription('Check latency'),
     
     async execute(interaction) {
         // Defer the reply to calculate accurate API latency
@@ -53,7 +53,7 @@ module.exports = {
                     inline: true
                 }
             ],
-            footer: 'Discord Music Bot',
+            footer: `${config.botName} Music Bot`,
             timestamp: true
         });
         

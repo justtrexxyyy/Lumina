@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('247')
-        .setDescription('🔄 Toggle 24/7 mode'),
+        .setDescription('Toggle 24/7 mode'),
     
     async execute(interaction) {
         const { client } = interaction;

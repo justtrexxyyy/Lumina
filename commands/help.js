@@ -43,17 +43,21 @@ module.exports = {
                     ].join('\n')
                 }
             ],
-            footer: `${config.botName} • Powered by Shoukaku & Kazagumo`,
+            footer: `${config.botName} • Developed by Unknownz`,
             timestamp: true
         });
 
-        // Create button row with only invite button to avoid URL validation issues
+        // Create button row with invite and support server buttons
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
                     .setLabel('Invite Bot')
                     .setStyle(ButtonStyle.Link)
-                    .setURL(`https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID || '123456789012345678'}&permissions=277083450432&scope=bot%20applications.commands`)
+                    .setURL(`https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID || '123456789012345678'}&permissions=277083450432&scope=bot%20applications.commands`),
+                new ButtonBuilder()
+                    .setLabel('Join Support Server')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(config.supportServer)
             );
         
         await interaction.reply({ embeds: [helpEmbed], components: [row] });

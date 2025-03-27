@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('invite')
-        .setDescription('📨 Invite bot to server'),
+        .setDescription('Invite bot to server'),
     
     async execute(interaction) {
         const { client } = interaction;
@@ -44,7 +44,7 @@ module.exports = {
         
         const inviteEmbed = createEmbed({
             title: `${config.emojis.invite} Invite ${config.botName}`,
-            description: `Thank you for your interest in ${config.botName}!\n\nClick the button below to invite the bot to your server:`,
+            description: `Thank you for your interest in ${config.botName}!\n\nClick the buttons below to invite the bot or join our support server:`,
             fields: [
                 {
                     name: 'Invite Link',
@@ -61,6 +61,19 @@ module.exports = {
             timestamp: true
         });
         
-        await interaction.reply({ embeds: [inviteEmbed] });
+        // Create buttons for invite and support server
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setLabel('Invite Bot')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(inviteLink),
+                new ButtonBuilder()
+                    .setLabel('Join Support Server')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(config.supportServer)
+            );
+        
+        await interaction.reply({ embeds: [inviteEmbed], components: [row] });
     },
 };

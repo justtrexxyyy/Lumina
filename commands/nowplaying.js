@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const { formatDuration, createProgressBar } = require('../utils/formatters');
 const config = require('../config');

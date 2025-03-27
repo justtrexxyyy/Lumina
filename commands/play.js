@@ -58,56 +58,23 @@ module.exports = {
                 player.queue.add(result.tracks);
                 
                 const playlistEmbed = createEmbed({
-                    title: `${config.emojis.play} Playlist Added to Queue`,
-                    description: `Added **${result.tracks.length}** songs from [${result.playlistName}](${query})`,
-                    fields: [
-                        {
-                            name: 'Enqueued By',
-                            value: `<@${interaction.user.id}>`,
-                            inline: true
-                        },
-                        {
-                            name: 'Total Duration',
-                            value: calculatePlaylistDuration(result.tracks),
-                            inline: true
-                        }
-                    ],
+                    description: `${config.emojis.play} Added [${result.playlistName}](${query}) to the queue`,
                     timestamp: true
                 });
                 
-                await interaction.editReply({ embeds: [playlistEmbed] });
+                await interaction.editReply({ embeds: [playlistEmbed], components: [] });
             } else {
                 // Add single track
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                // Create track added embed
+                // Create simplified track added embed
                 const trackEmbed = createEmbed({
-                    title: `${config.emojis.play} Track Added to Queue`,
-                    description: `[${track.title}](${track.uri})`,
-                    fields: [
-                        {
-                            name: 'Duration',
-                            value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
-                            inline: true
-                        },
-                        {
-                            name: 'Position in Queue',
-                            value: `#${player.queue.size}`,
-                            inline: true
-                        },
-                        {
-                            name: 'Requested By',
-                            value: `<@${interaction.user.id}>`,
-                            inline: true
-                        }
-                    ],
-                    thumbnail: track.thumbnail,
+                    description: `${config.emojis.play} Added ${track.isStream ? '🔴 LIVE' : ''} [${track.title}](${track.uri}) to the queue`,
                     timestamp: true
                 });
-
-                // No buttons
-                await interaction.editReply({ embeds: [trackEmbed] });
+                
+                await interaction.editReply({ embeds: [trackEmbed], components: [] });
             }
             
             // Start playback if not already playing

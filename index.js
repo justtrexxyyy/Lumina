@@ -78,24 +78,69 @@ shoukaku.on('disconnect', (name, reason) => console.warn(`Lavalink ${name}: Disc
 client.kazagumo.on('playerStart', (player, track) => {
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
+        // Add artist information if available
+        const artistInfo = track.author ? `\n${config.emojis.artist} Artist: **${track.author}**` : '';
+        
         const embed = {
             title: `${config.emojis.nowPlaying} Now Playing`,
-            description: `[${track.title}](${track.uri})`,
+            description: `${config.emojis.music} [${track.title}](${track.uri})${artistInfo}`,
             fields: [
                 {
-                    name: 'Duration',
+                    name: `${config.emojis.duration} Duration`,
                     value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
                     inline: true
                 },
                 {
-                    name: 'Requested By',
+                    name: `${config.emojis.user} Requested By`,
                     value: `<@${track.requester.id}>`,
                     inline: true
                 }
             ],
+            thumbnail: {
+                url: track.thumbnail || config.botLogo
+            },
             color: parseInt(config.embedColor.replace('#', ''), 16)
         };
-        channel.send({ embeds: [embed] }).catch(console.error);
+        
+        // Add buttons for now playing message (without emojis)
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        
+        const nowPlayingRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('pause')
+                    .setLabel('Pause')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('skip')
+                    .setLabel('Skip')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('queue')
+                    .setLabel('Queue')
+                    .setStyle(ButtonStyle.Success)
+            );
+        
+        const controlsRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('shuffle')
+                    .setLabel('Shuffle')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('loop')
+                    .setLabel('Loop')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('stop')
+                    .setLabel('Stop')
+                    .setStyle(ButtonStyle.Danger)
+            );
+        
+        channel.send({ 
+            embeds: [embed],
+            components: [nowPlayingRow, controlsRow]
+        }).catch(console.error);
     }
 });
 

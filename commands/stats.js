@@ -6,7 +6,7 @@ const os = require('os');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('📊 View statistics'),
+        .setDescription('View statistics'),
     
     async execute(interaction) {
         const { client } = interaction;

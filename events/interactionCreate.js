@@ -56,6 +56,7 @@ module.exports = {
             try {
                 switch (interaction.customId) {
                     case 'pause_resume':
+                    case 'pause':
                         if (player.paused) {
                             player.pause(false);
                             await interaction.reply({ 

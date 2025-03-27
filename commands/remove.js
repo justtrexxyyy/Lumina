@@ -5,7 +5,7 @@ const config = require('../config');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('remove')
-        .setDescription('❌ Remove a song from the queue')
+        .setDescription('Remove a song from the queue')
         .addIntegerOption(option => 
             option.setName('position')
                 .setDescription('Position of the track in the queue (1 is next song)')
