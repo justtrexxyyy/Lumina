@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const config = require('../config');
 
@@ -105,7 +105,32 @@ module.exports = {
                     timestamp: true
                 });
                 
-                await interaction.editReply({ embeds: [trackEmbed] });
+                // Add control buttons
+                const row = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('pause_resume')
+                            .setLabel(player.paused ? 'Resume' : 'Pause')
+                            .setStyle(ButtonStyle.Primary)
+                            .setEmoji(player.paused ? config.emojis.play : config.emojis.pause),
+                        new ButtonBuilder()
+                            .setCustomId('skip')
+                            .setLabel('Skip')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setEmoji(config.emojis.skip),
+                        new ButtonBuilder()
+                            .setCustomId('stop')
+                            .setLabel('Stop')
+                            .setStyle(ButtonStyle.Danger)
+                            .setEmoji(config.emojis.stop),
+                        new ButtonBuilder()
+                            .setCustomId('queue')
+                            .setLabel('Queue')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setEmoji(config.emojis.queue)
+                    );
+
+                await interaction.editReply({ embeds: [trackEmbed], components: [row] });
             }
             
             // Start playback if not already playing

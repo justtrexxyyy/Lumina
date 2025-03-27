@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('../config');
 const { createEmbed } = require('../utils/embeds');
 
@@ -12,7 +12,8 @@ module.exports = {
         
         const helpEmbed = createEmbed({
             title: `${config.botName} - Help Menu`,
-            description: 'Here are all the available commands:',
+            description: config.botDescription,
+            thumbnail: config.botLogo,
             fields: [
                 {
                     name: '🎵 Music Commands',
@@ -42,10 +43,22 @@ module.exports = {
                     ].join('\n')
                 }
             ],
-            footer: 'Discord Music Bot • Powered by Shoukaku & Kazagumo',
+            footer: `${config.botName} • Powered by Shoukaku & Kazagumo`,
             timestamp: true
         });
+
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setLabel('Invite Bot')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=277083450432&scope=bot%20applications.commands`),
+                new ButtonBuilder()
+                    .setLabel('Support Server')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(config.supportServer)
+            );
         
-        await interaction.reply({ embeds: [helpEmbed] });
+        await interaction.reply({ embeds: [helpEmbed], components: [row] });
     },
 };
