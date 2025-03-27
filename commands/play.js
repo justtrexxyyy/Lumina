@@ -55,7 +55,9 @@ module.exports = {
             // Handle different result types
             if (result.type === 'PLAYLIST') {
                 // Add all tracks from playlist to queue
-                player.queue.add(result.tracks);
+                for (const track of result.tracks) {
+                    player.queue.push(track);
+                }
                 
                 const playlistEmbed = createEmbed({
                     title: `${config.emojis.play} Playlist Added to Queue`,
@@ -79,7 +81,7 @@ module.exports = {
             } else {
                 // Add single track to queue
                 const track = result.tracks[0];
-                player.queue.add(track);
+                player.queue.push(track);
                 
                 const trackEmbed = createEmbed({
                     title: `${config.emojis.play} Track Added to Queue`,
@@ -92,7 +94,7 @@ module.exports = {
                         },
                         {
                             name: 'Position in Queue',
-                            value: `#${player.queue.size}`,
+                            value: `#${player.queue.totalSize}`,
                             inline: true
                         },
                         {
