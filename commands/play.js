@@ -81,34 +81,28 @@ module.exports = {
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                // Create a nowplaying embed instead of just a track added embed
+                // Create a simplified nowplaying embed
                 const nowPlayingEmbed = createEmbed({
-                    title: `${config.emojis.nowPlaying} Now Playing`,
+                    title: `🎵 Now Playing`,
                     description: `[${track.title}](${track.uri})`,
                     fields: [
                         {
                             name: 'Duration',
                             value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
-                            inline: true
-                        },
-                        {
-                            name: 'Position in Queue',
-                            value: `#${player.queue.size}`,
-                            inline: true
+                            inline: false
                         },
                         {
                             name: 'Requested By',
                             value: `<@${interaction.user.id}>`,
-                            inline: true
+                            inline: false
                         }
                     ],
                     thumbnail: track.thumbnail,
-                    footer: `Use /queue to view the full queue`,
                     timestamp: true
                 });
                 
-                // Add control buttons in two rows to fit all buttons
-                const row1 = new ActionRowBuilder()
+                // Add control buttons in a single row
+                const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder()
                             .setCustomId('pause_resume')
@@ -121,26 +115,14 @@ module.exports = {
                         new ButtonBuilder()
                             .setCustomId('stop')
                             .setLabel('Stop')
-                            .setStyle(ButtonStyle.Danger)
-                    );
-                
-                const row2 = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('queue')
-                            .setLabel('Queue')
-                            .setStyle(ButtonStyle.Secondary),
+                            .setStyle(ButtonStyle.Danger),
                         new ButtonBuilder()
                             .setCustomId('loop')
                             .setLabel(`Loop: ${getLoopModeName(player.loop)}`)
-                            .setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder()
-                            .setCustomId('shuffle')
-                            .setLabel('Shuffle')
                             .setStyle(ButtonStyle.Secondary)
                     );
 
-                await interaction.editReply({ embeds: [nowPlayingEmbed], components: [row1, row2] });
+                await interaction.editReply({ embeds: [nowPlayingEmbed], components: [row] });
             }
             
             // Start playback if not already playing
