@@ -37,27 +37,25 @@ module.exports = {
         await interaction.deferReply();
         
         try {
-            // Create or get the player
-            const player = client.kazagumo.createPlayer({
-                guildId: guildId,
-                voiceId: voiceChannel.id,
-                textId: textChannel.id,
-                deaf: true
-            });
-            
-            // Resolve and add the track to the queue
+            // Resolve the track/playlist
             const result = await client.kazagumo.search(query, { requester: interaction.user });
             
             if (!result || !result.tracks.length) {
                 return interaction.editReply({ embeds: [errorEmbed('No results found for your query!')] });
             }
             
+            // Create or get the player
+            const player = client.kazagumo.players.get(guildId) || await client.kazagumo.createPlayer({
+                guildId: guildId,
+                voiceId: voiceChannel.id,
+                textId: textChannel.id,
+                deaf: true
+            });
+            
             // Handle different result types
             if (result.type === 'PLAYLIST') {
-                // Add all tracks from playlist to queue
-                for (const track of result.tracks) {
-                    player.queue.push(track);
-                }
+                // Add all tracks from playlist
+                player.queue.add(result.tracks);
                 
                 const playlistEmbed = createEmbed({
                     title: `${config.emojis.play} Playlist Added to Queue`,
@@ -79,9 +77,9 @@ module.exports = {
                 
                 await interaction.editReply({ embeds: [playlistEmbed] });
             } else {
-                // Add single track to queue
+                // Add single track
                 const track = result.tracks[0];
-                player.queue.push(track);
+                player.queue.add(track);
                 
                 const trackEmbed = createEmbed({
                     title: `${config.emojis.play} Track Added to Queue`,
@@ -94,7 +92,7 @@ module.exports = {
                         },
                         {
                             name: 'Position in Queue',
-                            value: `#${player.queue.totalSize}`,
+                            value: `#${player.queue.size}`,
                             inline: true
                         },
                         {
@@ -110,9 +108,9 @@ module.exports = {
                 await interaction.editReply({ embeds: [trackEmbed] });
             }
             
-            // Play the track if the player isn't playing
+            // Start playback if not already playing
             if (!player.playing && !player.paused) {
-                player.play();
+                await player.play();
             }
         } catch (error) {
             console.error('Error while playing track:', error);
