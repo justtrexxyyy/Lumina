@@ -19,15 +19,22 @@ module.exports = {
             } catch (error) {
                 console.error(`Error executing command ${interaction.commandName}:`, error);
                 
-                const errorResponse = {
-                    embeds: [errorEmbed('There was an error while executing this command!')],
-                    ephemeral: true
-                };
-                
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp(errorResponse);
-                } else {
-                    await interaction.reply(errorResponse);
+                // Only handle the error if the interaction is still valid and hasn't timed out
+                try {
+                    const errorResponse = {
+                        embeds: [errorEmbed('There was an error while executing this command!')],
+                        ephemeral: true
+                    };
+                    
+                    if (interaction.replied) {
+                        await interaction.followUp(errorResponse).catch(e => console.error('Could not follow up with error:', e));
+                    } else if (interaction.deferred) {
+                        await interaction.editReply(errorResponse).catch(e => console.error('Could not edit reply with error:', e));
+                    } else {
+                        await interaction.reply(errorResponse).catch(e => console.error('Could not reply with error:', e));
+                    }
+                } catch (followUpError) {
+                    console.error('Error sending error response:', followUpError);
                 }
             }
         }
@@ -185,10 +192,26 @@ module.exports = {
                 }
             } catch (error) {
                 console.error('Error handling button interaction:', error);
-                await interaction.reply({ 
-                    embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
-                    ephemeral: true 
-                });
+                try {
+                    if (interaction.replied) {
+                        await interaction.followUp({ 
+                            embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
+                            ephemeral: true 
+                        }).catch(e => console.error('Could not follow up with button error:', e));
+                    } else if (interaction.deferred) {
+                        await interaction.editReply({ 
+                            embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
+                            ephemeral: true 
+                        }).catch(e => console.error('Could not edit reply with button error:', e));
+                    } else {
+                        await interaction.reply({ 
+                            embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
+                            ephemeral: true 
+                        }).catch(e => console.error('Could not reply with button error:', e));
+                    }
+                } catch (responseError) {
+                    console.error('Failed to send button error response:', responseError);
+                }
             }
         }
     },
