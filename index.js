@@ -165,21 +165,28 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 }
                 
                 // Search for related tracks
+                console.log(`Autoplay: Searching for tracks related to: ${lastTrack.uri}`);
                 const result = await client.kazagumo.search(lastTrack.uri, { requester: lastTrack.requester });
                 
                 if (result && result.tracks.length > 0) {
+                    console.log(`Autoplay: Found ${result.tracks.length} related tracks`);
+                    
                     // Filter out the track that just played
                     const filteredTracks = result.tracks.filter(track => track.uri !== lastTrack.uri);
+                    console.log(`Autoplay: After filtering, ${filteredTracks.length} tracks remain`);
                     
                     if (filteredTracks.length > 0) {
                         // Randomly select one of the related tracks
-                        const randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+                        const randomIndex = Math.floor(Math.random() * filteredTracks.length);
+                        const randomTrack = filteredTracks[randomIndex];
+                        console.log(`Autoplay: Selected track ${randomIndex+1}/${filteredTracks.length}: ${randomTrack.title}`);
                         
                         // Add the track to the queue
                         player.queue.add(randomTrack);
                         
                         // Play it (since the queue was empty)
                         if (!player.playing && !player.paused) {
+                            console.log(`Autoplay: Starting playback of the new track`);
                             player.play();
                         }
                         
@@ -190,7 +197,11 @@ client.kazagumo.on('playerEmpty', async (player) => {
                         
                         // Don't proceed with the disconnect logic since we have autoplay
                         return;
+                    } else {
+                        console.log(`Autoplay: No tracks remain after filtering out the previously played track`);
                     }
+                } else {
+                    console.log(`Autoplay: No related tracks found or search failed`);
                 }
             } catch (error) {
                 console.error('Autoplay Error:', error);
