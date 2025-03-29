@@ -4,8 +4,8 @@ const config = require('../config');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('pause')
-        .setDescription('Pause or resume current playback'),
+        .setName('autoplay')
+        .setDescription('Toggle autoplay mode to automatically add related tracks when queue ends'),
     
     async execute(interaction) {
         const { client } = interaction;
@@ -31,30 +31,33 @@ module.exports = {
             return interaction.reply({ embeds: [errorEmbed('You need to be in the same voice channel as me!')], ephemeral: true });
         }
         
-        if (player.paused) {
-            // Resume the player if it's already paused
-            await player.pause(false);
+        // Toggle autoplay
+        if (!client.autoplay) client.autoplay = new Set();
+        
+        const autoplayEnabled = client.autoplay.has(guildId);
+        
+        if (autoplayEnabled) {
+            client.autoplay.delete(guildId);
             
-            const resumeEmbed = createEmbed({
-                title: `${config.emojis.play} Playback Resumed`,
-                description: 'The current playback has been resumed.',
+            const disabledEmbed = createEmbed({
+                title: `${config.emojis.stop} Autoplay Disabled`,
+                description: `Autoplay mode has been **disabled**. I will no longer automatically add related tracks when the queue ends.`,
                 footer: `Requested by ${interaction.user.tag}`,
                 timestamp: true
             });
             
-            await interaction.reply({ embeds: [resumeEmbed] });
+            await interaction.reply({ embeds: [disabledEmbed] });
         } else {
-            // Pause the player
-            await player.pause(true);
+            client.autoplay.add(guildId);
             
-            const pauseEmbed = createEmbed({
-                title: `${config.emojis.pause} Playback Paused`,
-                description: 'The current playback has been paused. Use `/pause` again to resume.',
+            const enabledEmbed = createEmbed({
+                title: `${config.emojis.autoplay} Autoplay Enabled`,
+                description: `Autoplay mode has been **enabled**. I will automatically add related tracks when the queue ends.`,
                 footer: `Requested by ${interaction.user.tag}`,
                 timestamp: true
             });
             
-            await interaction.reply({ embeds: [pauseEmbed] });
+            await interaction.reply({ embeds: [enabledEmbed] });
         }
     },
 };

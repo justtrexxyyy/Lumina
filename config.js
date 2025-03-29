@@ -9,8 +9,8 @@ module.exports = {
         nodes: [
             {
                 name: 'Main Node',
-                url: `${process.env.LAVALINK_HOST || 'unknownz.info.gf'}:${process.env.LAVALINK_PORT || '9146'}`,
-                auth: process.env.LAVALINK_PASSWORD || 'unknownz',
+                url: `${process.env.LAVALINK_HOST || 'lava-v4.ajieblogs.eu.org'}:${process.env.LAVALINK_PORT || '80'}`,
+                auth: process.env.LAVALINK_PASSWORD || 'https://dsc.gg/ajidevserver',
                 secure: false,
             }
         ]
@@ -31,6 +31,11 @@ module.exports = {
         ping: '📡',
         stats: '📊',
         invite: '📨',
-        support: '📢'
+        support: '📢',
+        music: '🎧',
+        artist: '👤',
+        duration: '⏱️',
+        user: '🙋‍♂️',
+        autoplay: '♾️'
     }
 };

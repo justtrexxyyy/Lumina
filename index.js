@@ -17,6 +17,7 @@ const client = new Client({
 // Store commands in a collection
 client.commands = new Collection();
 client.twentyFourSeven = new Collection();
+client.autoplay = new Set();
 
 // Initialize Shoukaku and Kazagumo
 const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.nodes, {
@@ -109,7 +110,7 @@ client.kazagumo.on('playerStart', (player, track) => {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('pause')
-                    .setLabel('Pause')
+                    .setLabel('Pause/Resume')
                     .setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder()
                     .setCustomId('skip')
@@ -144,9 +145,58 @@ client.kazagumo.on('playerStart', (player, track) => {
     }
 });
 
-client.kazagumo.on('playerEmpty', (player) => {
+client.kazagumo.on('playerEmpty', async (player) => {
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
+    
+    // Initialize autoplay set if it doesn't exist
+    if (!client.autoplay) client.autoplay = new Set();
+    
+    // Check if autoplay is enabled for this guild
+    if (client.autoplay.has(guildId)) {
+        // Get the last played track to find related tracks
+        const lastTrack = player.queue.previous;
+        
+        if (lastTrack) {
+            try {
+                // Send a message that we're searching for similar tracks
+                if (channel) {
+                    channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Searching for similar tracks...` }).catch(console.error);
+                }
+                
+                // Search for related tracks
+                const result = await client.kazagumo.search(lastTrack.uri, { requester: lastTrack.requester });
+                
+                if (result && result.tracks.length > 0) {
+                    // Filter out the track that just played
+                    const filteredTracks = result.tracks.filter(track => track.uri !== lastTrack.uri);
+                    
+                    if (filteredTracks.length > 0) {
+                        // Randomly select one of the related tracks
+                        const randomTrack = filteredTracks[Math.floor(Math.random() * filteredTracks.length)];
+                        
+                        // Add the track to the queue
+                        player.queue.add(randomTrack);
+                        
+                        // Play it (since the queue was empty)
+                        if (!player.playing && !player.paused) {
+                            player.play();
+                        }
+                        
+                        // Send a message about the added track
+                        if (channel) {
+                            channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Added **${randomTrack.title}** to the queue.` }).catch(console.error);
+                        }
+                        
+                        // Don't proceed with the disconnect logic since we have autoplay
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Autoplay Error:', error);
+            }
+        }
+    }
     
     // Don't disconnect if 24/7 mode is enabled
     if (client.twentyFourSeven.has(guildId)) return;
