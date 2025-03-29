@@ -36,6 +36,7 @@ module.exports = {
         artist: '👤',
         duration: '⏱️',
         user: '🙋‍♂️',
-        autoplay: '♾️'
+        autoplay: '♾️',
+        warning: '⚠️'
     }
 };
