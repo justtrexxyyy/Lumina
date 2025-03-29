@@ -12,6 +12,8 @@ module.exports = {
             const { client } = interaction;
             const guildId = interaction.guildId;
             
+            console.log(`Autoplay command executed in guild: ${guildId}`);
+            
             // Check if the user is in a voice channel
             const member = interaction.member;
             const voiceChannel = member.voice.channel;
@@ -32,13 +34,19 @@ module.exports = {
                 return interaction.reply({ embeds: [errorEmbed('You need to be in the same voice channel as me!')], ephemeral: true });
             }
             
-            // Initialize autoplay set if it doesn't exist
-            if (!client.autoplay) client.autoplay = new Set();
+            // Make sure the autoplay collection exists
+            if (!client.autoplay) {
+                console.log(`Creating new autoplay Set`);
+                client.autoplay = new Set();
+            }
             
+            // Check current autoplay status
             const autoplayEnabled = client.autoplay.has(guildId);
+            console.log(`Current autoplay status for guild ${guildId}: ${autoplayEnabled ? 'Enabled' : 'Disabled'}`);
             
             if (autoplayEnabled) {
                 client.autoplay.delete(guildId);
+                console.log(`Autoplay disabled for guild ${guildId}`);
                 
                 const disabledEmbed = createEmbed({
                     title: `${config.emojis.stop} Autoplay Disabled`,
@@ -50,6 +58,7 @@ module.exports = {
                 await interaction.reply({ embeds: [disabledEmbed] });
             } else {
                 client.autoplay.add(guildId);
+                console.log(`Autoplay enabled for guild ${guildId}`);
                 
                 const enabledEmbed = createEmbed({
                     title: `${config.emojis.autoplay} Autoplay Enabled`,

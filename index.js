@@ -194,109 +194,150 @@ client.kazagumo.on('playerEmpty', async (player) => {
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
     
+    console.log(`Player empty for guild ${guildId}`);
+    
     // Initialize autoplay set if it doesn't exist
-    if (!client.autoplay) client.autoplay = new Set();
+    if (!client.autoplay) {
+        console.log(`Creating autoplay Set in playerEmpty event`);
+        client.autoplay = new Set();
+    }
     
     // Check if autoplay is enabled for this guild
+    console.log(`Checking autoplay status for guild ${guildId}: ${client.autoplay.has(guildId) ? 'Enabled' : 'Disabled'}`);
+    
     if (client.autoplay.has(guildId)) {
-        // Get the last played track to find related tracks
-        const lastTrack = player.queue.previous;
+        console.log(`Autoplay is enabled for guild ${guildId}, attempting to find related tracks`);
         
-        if (lastTrack && lastTrack.uri) {
-            try {
-                // Send a message that we're searching for similar tracks
-                if (channel) {
-                    channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Searching for similar tracks...` }).catch(console.error);
-                }
+        try {
+            // Get the last played track to find related tracks
+            let lastTrack;
+            
+            // Try to get the previous track from player.queue
+            if (player.queue && player.queue.previous) {
+                lastTrack = player.queue.previous;
+                console.log(`Found previous track in queue: ${lastTrack.title}`);
+            } else {
+                // If no previous track, check player.current or try with a default search
+                console.log(`No previous track found in queue, checking alternatives`);
                 
-                // Verify lastTrack has a valid URI before searching
-                console.log(`Autoplay: Checking last track: ${JSON.stringify({
-                    title: lastTrack.title,
-                    uri: lastTrack.uri,
-                    author: lastTrack.author
-                })}`);
-                
-                if (!lastTrack.uri) {
-                    console.log(`Autoplay: Missing URI for last track, cannot search for related tracks`);
+                if (player.current) {
+                    lastTrack = player.current;
+                    console.log(`Using current track as reference: ${lastTrack.title}`);
+                } else {
+                    // If no track info available, inform the user and exit
+                    console.log(`No track information available for autoplay`);
                     if (channel) {
-                        channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Cannot find related tracks due to missing track information.` }).catch(console.error);
+                        channel.send({ content: `${config.emojis.warning} **Autoplay**: Cannot find any track information to use as reference.` }).catch(console.error);
                     }
                     return;
                 }
+            }
+            
+            // Send a message that we're searching for similar tracks
+            if (channel) {
+                channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Searching for similar tracks...` }).catch(console.error);
+            }
+            
+            // Log track details for debugging
+            console.log(`Autoplay: Reference track details:`, {
+                title: lastTrack.title || 'Unknown',
+                uri: lastTrack.uri || 'No URI',
+                author: lastTrack.author || 'Unknown'
+            });
+            
+            // Determine search query - prefer URI, fall back to title+author
+            let searchQuery;
+            let searchMethod;
+            
+            if (lastTrack.uri) {
+                searchQuery = lastTrack.uri;
+                searchMethod = 'URI';
+            } else {
+                searchQuery = `${lastTrack.author ? lastTrack.author + ' - ' : ''}${lastTrack.title}`;
+                searchMethod = 'title/artist';
+            }
+            
+            console.log(`Autoplay: Searching by ${searchMethod}: "${searchQuery}"`);
+            
+            // Search for related tracks
+            const result = await client.kazagumo.search(searchQuery, { 
+                requester: lastTrack.requester || { id: client.user.id, username: client.user.username } 
+            }).catch(e => {
+                console.log(`Autoplay: Error searching: ${e.message}`);
+                return null;
+            });
+            
+            if (result && result.tracks && result.tracks.length > 0) {
+                console.log(`Autoplay: Found ${result.tracks.length} tracks for search query`);
                 
-                // Search for related tracks with a fallback search strategy
-                console.log(`Autoplay: Searching for tracks related to: ${lastTrack.uri}`);
+                // Filter out the track that just played if possible
+                let filteredTracks = result.tracks;
                 
-                // Try to search by URI first
-                let result = await client.kazagumo.search(lastTrack.uri, { requester: lastTrack.requester }).catch(e => {
-                    console.log(`Autoplay: Error searching by URI: ${e.message}`);
-                    return null;
-                });
-                
-                // If URI search fails, try searching by title and artist
-                if (!result || !result.tracks || result.tracks.length === 0) {
-                    const searchQuery = `${lastTrack.author ? lastTrack.author + ' - ' : ''}${lastTrack.title}`;
-                    console.log(`Autoplay: URI search failed, trying by title/artist: "${searchQuery}"`);
-                    
-                    result = await client.kazagumo.search(searchQuery, { requester: lastTrack.requester }).catch(e => {
-                        console.log(`Autoplay: Error searching by title: ${e.message}`);
-                        return null;
+                if (lastTrack.uri || lastTrack.title) {
+                    filteredTracks = result.tracks.filter(track => {
+                        // Compare by URI if available, otherwise by title
+                        if (lastTrack.uri && track.uri) {
+                            return track.uri !== lastTrack.uri;
+                        } else if (lastTrack.title && track.title) {
+                            return track.title !== lastTrack.title;
+                        }
+                        return true; // Keep if we can't compare
                     });
+                    
+                    console.log(`Autoplay: After filtering out reference track, ${filteredTracks.length} tracks remain`);
                 }
                 
-                if (result && result.tracks && result.tracks.length > 0) {
-                    console.log(`Autoplay: Found ${result.tracks.length} related tracks`);
+                if (filteredTracks.length > 0) {
+                    // Randomly select one of the tracks
+                    const randomIndex = Math.floor(Math.random() * filteredTracks.length);
+                    const randomTrack = filteredTracks[randomIndex];
+                    console.log(`Autoplay: Selected track ${randomIndex+1}/${filteredTracks.length}: ${randomTrack.title}`);
                     
-                    // Filter out the track that just played (comparing by title if URI isn't available)
-                    const filteredTracks = result.tracks.filter(track => 
-                        (lastTrack.uri && track.uri !== lastTrack.uri) || 
-                        (!lastTrack.uri && track.title !== lastTrack.title)
-                    );
-                    
-                    console.log(`Autoplay: After filtering, ${filteredTracks.length} tracks remain`);
-                    
-                    if (filteredTracks.length > 0) {
-                        // Randomly select one of the related tracks
-                        const randomIndex = Math.floor(Math.random() * filteredTracks.length);
-                        const randomTrack = filteredTracks[randomIndex];
-                        console.log(`Autoplay: Selected track ${randomIndex+1}/${filteredTracks.length}: ${randomTrack.title}`);
+                    try {
+                        // Add the track to the queue
+                        player.queue.add(randomTrack);
+                        console.log(`Autoplay: Added track to queue`);
                         
-                        try {
-                            // Add the track to the queue
-                            player.queue.add(randomTrack);
-                            
-                            // Play it (since the queue was empty)
-                            if (!player.playing && !player.paused) {
-                                console.log(`Autoplay: Starting playback of the new track`);
-                                player.play().catch(e => {
-                                    console.error(`Autoplay: Error starting playback: ${e.message}`);
-                                    if (channel) {
-                                        channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
-                                    }
-                                });
-                            }
-                            
-                            // Send a message about the added track
-                            if (channel) {
-                                channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Added **${randomTrack.title}** to the queue.` }).catch(console.error);
-                            }
-                            
-                            // Don't proceed with the disconnect logic since we have autoplay
-                            return;
-                        } catch (playError) {
-                            console.error(`Autoplay: Error in queue/play handling: ${playError.message}`);
-                            if (channel) {
-                                channel.send({ content: `${config.emojis.warning} **Autoplay Error**: ${playError.message}` }).catch(console.error);
-                            }
+                        // Play it (since the queue was empty)
+                        if (!player.playing && !player.paused) {
+                            console.log(`Autoplay: Starting playback of the new track`);
+                            await player.play().catch(e => {
+                                console.error(`Autoplay: Error starting playback: ${e.message}`);
+                                if (channel) {
+                                    channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
+                                }
+                            });
                         }
-                    } else {
-                        console.log(`Autoplay: No tracks remain after filtering out the previously played track`);
+                        
+                        // Send a message about the added track
+                        if (channel) {
+                            channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Added **${randomTrack.title}** to the queue.` }).catch(console.error);
+                        }
+                        
+                        // Don't proceed with the disconnect logic since we have autoplay
+                        return;
+                    } catch (playError) {
+                        console.error(`Autoplay: Error in queue/play handling: ${playError.message}`);
+                        if (channel) {
+                            channel.send({ content: `${config.emojis.warning} **Autoplay Error**: ${playError.message}` }).catch(console.error);
+                        }
                     }
                 } else {
-                    console.log(`Autoplay: No related tracks found or search failed`);
+                    console.log(`Autoplay: No suitable tracks found after filtering`);
+                    if (channel) {
+                        channel.send({ content: `${config.emojis.warning} **Autoplay**: Couldn't find any suitable related tracks to play.` }).catch(console.error);
+                    }
                 }
-            } catch (error) {
-                console.error('Autoplay Error:', error);
+            } else {
+                console.log(`Autoplay: No tracks found for query "${searchQuery}"`);
+                if (channel) {
+                    channel.send({ content: `${config.emojis.warning} **Autoplay**: Couldn't find any related tracks.` }).catch(console.error);
+                }
+            }
+        } catch (error) {
+            console.error('Autoplay Error:', error);
+            if (channel) {
+                channel.send({ content: `${config.emojis.warning} **Autoplay Error**: An unexpected error occurred.` }).catch(console.error);
             }
         }
     }
