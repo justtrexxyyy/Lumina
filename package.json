@@ -12,7 +12,9 @@
   "dependencies": {
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
+    "genius-lyrics": "^4.4.7",
     "kazagumo": "^3.2.2",
+    "node-fetch": "^3.3.2",
     "shoukaku": "^4.1.1"
   }
 }

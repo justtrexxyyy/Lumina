@@ -288,12 +288,28 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 }
                 
                 if (filteredTracks.length > 0) {
-                    // Randomly select one of the tracks
+                    // Randomly select one of the tracks, with proper error checking
                     const randomIndex = Math.floor(Math.random() * filteredTracks.length);
                     const randomTrack = filteredTracks[randomIndex];
-                    console.log(`Autoplay: Selected track ${randomIndex+1}/${filteredTracks.length}: ${randomTrack.title}`);
+                    
+                    // Verify the random track has the necessary properties
+                    if (!randomTrack || typeof randomTrack !== 'object') {
+                        console.error(`Autoplay: Selected track at index ${randomIndex} is undefined or not an object`);
+                        if (channel) {
+                            channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Invalid track data returned from search.` }).catch(console.error);
+                        }
+                        return;
+                    }
+                    
+                    console.log(`Autoplay: Selected track ${randomIndex+1}/${filteredTracks.length}: ${randomTrack.title || 'Unknown Title'}`);
                     
                     try {
+                        // Verify the track has required properties before adding to queue
+                        if (!randomTrack.title) {
+                            console.warn(`Autoplay: Track is missing title property, adding with placeholder title`);
+                            randomTrack.title = "Unknown Track";
+                        }
+                        
                         // Add the track to the queue
                         player.queue.add(randomTrack);
                         console.log(`Autoplay: Added track to queue`);
@@ -301,12 +317,14 @@ client.kazagumo.on('playerEmpty', async (player) => {
                         // Play it (since the queue was empty)
                         if (!player.playing && !player.paused) {
                             console.log(`Autoplay: Starting playback of the new track`);
-                            await player.play().catch(e => {
+                            try {
+                                await player.play();
+                            } catch (e) {
                                 console.error(`Autoplay: Error starting playback: ${e.message}`);
                                 if (channel) {
                                     channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
                                 }
-                            });
+                            }
                         }
                         
                         // Send a message about the added track

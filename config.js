@@ -37,6 +37,10 @@ module.exports = {
         duration: '⏱️',
         user: '🙋‍♂️',
         autoplay: '♾️',
-        warning: '⚠️'
+        warning: '⚠️',
+        connect: '🔌',
+        filters: '🎛️',
+        lyrics: '📝',
+        info: 'ℹ️'
     }
 };

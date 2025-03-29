@@ -79,12 +79,58 @@ module.exports = {
             
             // Start playback if not already playing
             if (!player.playing && !player.paused) {
-                await player.play();
+                try {
+                    await player.play();
+                } catch (playbackError) {
+                    console.error('Error starting playback:', playbackError);
+                    
+                    // Handle specific errors with user-friendly messages
+                    let errorMsg = 'Failed to play the track';
+                    
+                    if (playbackError.message) {
+                        if (playbackError.message.includes('load failed')) {
+                            errorMsg = 'This track could not be loaded. It may be unavailable or restricted.';
+                        } else if (playbackError.message.includes('No available nodes')) {
+                            errorMsg = 'Music servers are currently unavailable. Please try again later.';
+                        } else if (playbackError.message.includes('Connection')) {
+                            errorMsg = 'Connection to the voice channel was lost. Please try again.';
+                        } else {
+                            errorMsg = `Playback error: ${playbackError.message}`;
+                        }
+                    }
+                    
+                    await interaction.editReply({ 
+                        embeds: [errorEmbed(`${config.emojis.warning} ${errorMsg}`)]
+                    });
+                    return;
+                }
             }
         } catch (error) {
             console.error('Error while playing track:', error);
+            
+            // Create a user-friendly error message based on the error type
+            let errorMessage = 'An unknown error occurred while processing your request.';
+            
+            if (error.message) {
+                if (error.message.includes('No results found')) {
+                    errorMessage = 'No tracks were found for your search query. Please try a different query.';
+                } else if (error.message.includes('invalid URL')) {
+                    errorMessage = 'The URL you provided is invalid or not supported.';
+                } else if (error.message.includes('ERR_UNHANDLED_ERROR')) {
+                    errorMessage = 'An unexpected error occurred. This has been logged for investigation.';
+                } else if (error.message.includes('Timeout')) {
+                    errorMessage = 'The request timed out. Please check your connection and try again.';
+                } else if (error.message.includes('rate limit')) {
+                    errorMessage = 'Too many requests. Please wait a moment before trying again.';
+                } else {
+                    // For other errors, use a sanitized message
+                    const safeMessage = error.message.replace(/[^\w\s.,!?:;-]/g, '');
+                    errorMessage = `Error: ${safeMessage.slice(0, 150)}${safeMessage.length > 150 ? '...' : ''}`;
+                }
+            }
+            
             await interaction.editReply({ 
-                embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)]
+                embeds: [errorEmbed(`${config.emojis.warning} ${errorMessage}`)]
             });
         }
     },
