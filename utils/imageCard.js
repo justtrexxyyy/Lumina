@@ -179,20 +179,20 @@ async function generateMusicCard(options = {}) {
         const sourceIconY = infoY + 12;
         const iconSize = 14;
         
-        // Source icon background circle
+        // Source icon background circle - smaller for better fit
         ctx.fillStyle = getSourceColor(sourceName.toLowerCase());
         ctx.beginPath();
-        ctx.arc(column2X + iconSize - 3, sourceIconY, iconSize - 4, 0, Math.PI * 2);
+        ctx.arc(column2X + iconSize - 3, sourceIconY, iconSize - 5, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw YouTube triangle icon horizontally (pointing right)
+        // Draw YouTube triangle icon horizontally (pointing right) - smaller size
         if (sourceName.toLowerCase() === 'youtube') {
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            // Triangle pointing right (horizontally aligned)
-            ctx.moveTo(column2X + iconSize - 7, sourceIconY - 4);
-            ctx.lineTo(column2X + iconSize + 2, sourceIconY);
-            ctx.lineTo(column2X + iconSize - 7, sourceIconY + 4);
+            // Triangle pointing right (horizontally aligned) - reduced size
+            ctx.moveTo(column2X + iconSize - 5, sourceIconY - 3);
+            ctx.lineTo(column2X + iconSize, sourceIconY);
+            ctx.lineTo(column2X + iconSize - 5, sourceIconY + 3);
             ctx.closePath();
             ctx.fill();
         } else {
