@@ -179,22 +179,16 @@ async function generateMusicCard(options = {}) {
         const sourceIconY = infoY + 12;
         const iconSize = 14;
         
-        // Handle YouTube differently - no icon, just centered text
+        // Handle YouTube normally like other text, but without an icon
         if (sourceName.toLowerCase() === 'youtube') {
-            // Set text properties for centered YouTube text
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#FF0000'; // YouTube red
-            ctx.font = 'bold 14px Arial';
-            
-            // Draw YouTube text centered
-            ctx.fillText('YouTube', column2X + 50, sourceIconY);
-            
-            // Reset text properties
+            // Just draw the YouTube text in normal style
+            ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
-            ctx.fillStyle = '#ffffff';
             ctx.font = '14px Arial';
+            
+            // Draw YouTube text in normal position
+            ctx.fillText('YouTube', column2X, infoY + 12);
         } else {
             // For other sources, keep the icon approach
             // Source icon background circle
