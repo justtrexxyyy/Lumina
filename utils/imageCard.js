@@ -163,7 +163,7 @@ async function generateMusicCard(options = {}) {
         ctx.fillText('Requested by', column1X, infoY);
         // Column 2
         ctx.fillText('Source', column2X, infoY);
-        ctx.fillText('Volume', column2X, infoY + 24);
+        ctx.fillText('Volume', column2X, infoY + 36); // Increased vertical gap for label
         // Column 3
         ctx.fillText('Loop Mode', column3X, infoY);
         
@@ -188,8 +188,8 @@ async function generateMusicCard(options = {}) {
         // Draw source text in normal position
         ctx.fillText(sourceName, column2X, infoY + 12);
         
-        // Volume value (using smaller font)
-        ctx.fillText(`${volume}%`, column2X, infoY + 36);
+        // Volume value (using smaller font) - increased vertical gap
+        ctx.fillText(`${volume}%`, column2X, infoY + 48);
         
         // Column 3 values (using smaller font)
         ctx.fillText(getLoopModeName(loopMode), column3X, infoY + 12);
