@@ -70,20 +70,17 @@ module.exports = {
                 queueInfo = 'No tracks in queue';
             }
             
-            // Enhanced embed with title, image card, and queue information
+            // Enhanced embed with title, image card, and footer (no queue)
             const npEmbed = {
                 title: `🎵 Now Playing ${current.isStream ? '(Live Stream)' : ''}`,
                 description: `**[${current.title}](${current.uri})**\nRequested by: ${current.requester}`,
                 image: {
                     url: 'attachment://music_card.jpg'
                 },
-                fields: [
-                    {
-                        name: `📋 Queue (${player.queue.length} track${player.queue.length !== 1 ? 's' : ''})`,
-                        value: queueInfo
-                    }
-                ],
-                color: parseInt(config.embedColor.replace('#', ''), 16)
+                color: parseInt(config.embedColor.replace('#', ''), 16),
+                footer: {
+                    text: `Loop: ${getLoopModeName(player.loop)} | Volume: ${player.volume}%`
+                }
             };
             
             // Edit the deferred reply with the embed and attachment, without buttons
@@ -119,7 +116,7 @@ module.exports = {
                 queueInfo = 'No tracks in queue';
             }
             
-            // Create minimal fallback fields with simplified layout
+            // Create minimal fallback fields with simplified layout (no queue)
             const fields = [
                 {
                     name: 'Track Info',
@@ -130,11 +127,6 @@ module.exports = {
                     name: 'Status',
                     value: `**Position:** ${isStream ? 'N/A' : positionFormatted}\n**Loop:** ${getLoopModeName(player.loop)}\n**Queue:** ${player.queue.length} tracks`,
                     inline: true
-                },
-                {
-                    name: `📋 Queue (${player.queue.length} track${player.queue.length !== 1 ? 's' : ''})`,
-                    value: queueInfo,
-                    inline: false
                 }
             ];
             
