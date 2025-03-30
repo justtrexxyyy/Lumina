@@ -183,19 +183,19 @@ async function generateMusicCard(options = {}) {
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.font = '12px Arial'; // Smaller font size for source
+        ctx.font = '12px Arial'; // Smaller font size for source, volume and loop
         
         // Draw source text in normal position
         ctx.fillText(sourceName, column2X, infoY + 12);
         
-        // Reset font size for other elements
-        ctx.font = '14px Arial';
-        
-        // Volume value
+        // Volume value (using smaller font)
         ctx.fillText(`${volume}%`, column2X, infoY + 36);
         
-        // Column 3 values
+        // Column 3 values (using smaller font)
         ctx.fillText(getLoopModeName(loopMode), column3X, infoY + 12);
+        
+        // Reset font size for other elements
+        ctx.font = '14px Arial';
         
         // Convert to buffer and return
         return canvas.toBuffer('image/jpeg', { quality: 0.9 });
