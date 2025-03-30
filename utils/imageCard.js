@@ -179,23 +179,30 @@ async function generateMusicCard(options = {}) {
         const sourceIconY = infoY + 12;
         const iconSize = 14;
         
-        // Source icon background circle - smaller for better fit
-        ctx.fillStyle = getSourceColor(sourceName.toLowerCase());
-        ctx.beginPath();
-        ctx.arc(column2X + iconSize - 3, sourceIconY, iconSize - 5, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw YouTube triangle icon horizontally (pointing right) - smaller size
+        // Handle YouTube differently - no icon, just centered text
         if (sourceName.toLowerCase() === 'youtube') {
+            // Set text properties for centered YouTube text
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FF0000'; // YouTube red
+            ctx.font = 'bold 14px Arial';
+            
+            // Draw YouTube text centered
+            ctx.fillText('YouTube', column2X + 50, sourceIconY);
+            
+            // Reset text properties
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            // Triangle pointing right (horizontally aligned) - reduced size
-            ctx.moveTo(column2X + iconSize - 5, sourceIconY - 3);
-            ctx.lineTo(column2X + iconSize, sourceIconY);
-            ctx.lineTo(column2X + iconSize - 5, sourceIconY + 3);
-            ctx.closePath();
-            ctx.fill();
+            ctx.font = '14px Arial';
         } else {
+            // For other sources, keep the icon approach
+            // Source icon background circle
+            ctx.fillStyle = getSourceColor(sourceName.toLowerCase());
+            ctx.beginPath();
+            ctx.arc(column2X + iconSize - 3, sourceIconY, iconSize - 5, 0, Math.PI * 2);
+            ctx.fill();
+            
             // Other source icons
             ctx.fillStyle = '#ffffff';
             ctx.font = '10px Arial';
@@ -209,14 +216,14 @@ async function generateMusicCard(options = {}) {
             else if (sourceName.toLowerCase() === 'twitch') sourceIcon = 'T';
             
             ctx.fillText(sourceIcon, column2X + iconSize - 3, sourceIconY);
+            
+            // Reset text alignment
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+            
+            // Source name text after icon
+            ctx.fillText(sourceName, column2X + iconSize * 2, infoY + 12);
         }
-        
-        // Reset text alignment
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        
-        // Source name text after icon
-        ctx.fillText(sourceName, column2X + iconSize * 2, infoY + 12);
         
         // Volume value
         ctx.fillText(`${volume}%`, column2X, infoY + 36);
