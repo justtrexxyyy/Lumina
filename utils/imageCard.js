@@ -179,45 +179,14 @@ async function generateMusicCard(options = {}) {
         const sourceIconY = infoY + 12;
         const iconSize = 14;
         
-        // Handle YouTube normally like other text, but without an icon
-        if (sourceName.toLowerCase() === 'youtube') {
-            // Just draw the YouTube text in normal style
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'alphabetic';
-            ctx.font = '14px Arial';
-            
-            // Draw YouTube text in normal position
-            ctx.fillText('YouTube', column2X, infoY + 12);
-        } else {
-            // For other sources, keep the icon approach
-            // Source icon background circle
-            ctx.fillStyle = getSourceColor(sourceName.toLowerCase());
-            ctx.beginPath();
-            ctx.arc(column2X + iconSize - 3, sourceIconY, iconSize - 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Other source icons
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '10px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            // Choose appropriate icon based on source
-            let sourceIcon = '♪';
-            if (sourceName.toLowerCase() === 'spotify') sourceIcon = '♫';
-            else if (sourceName.toLowerCase() === 'soundcloud') sourceIcon = '☁';
-            else if (sourceName.toLowerCase() === 'twitch') sourceIcon = 'T';
-            
-            ctx.fillText(sourceIcon, column2X + iconSize - 3, sourceIconY);
-            
-            // Reset text alignment
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'alphabetic';
-            
-            // Source name text after icon
-            ctx.fillText(sourceName, column2X + iconSize * 2, infoY + 12);
-        }
+        // Display all sources the same way with normal text style and no icons
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = '14px Arial';
+        
+        // Draw source text in normal position
+        ctx.fillText(sourceName, column2X, infoY + 12);
         
         // Volume value
         ctx.fillText(`${volume}%`, column2X, infoY + 36);
