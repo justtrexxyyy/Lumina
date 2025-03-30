@@ -175,17 +175,17 @@ async function generateMusicCard(options = {}) {
         const infoY = progressY + 60;
         ctx.fillStyle = '#a0a0a0';
         ctx.font = 'bold 16px Arial';
-        ctx.fillText('Requested by:', 23, infoY);  // Added colon for clarity
-        ctx.fillText('Source:', 23, infoY + 40);  // Added colon for consistency
-        ctx.fillText('Duration:', 23, infoY + 80);  // Added colon for consistency
+        ctx.fillText('Requested by', 23, infoY);
+        ctx.fillText('Source', 23, infoY + 40);
+        ctx.fillText('Duration', 23, infoY + 80);
         
         // Information values - column 1
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px Arial';
         // Position username directly after the label with proper spacing
-        ctx.fillText(requester, 130, infoY);
-        ctx.fillText(sourceName, 130, infoY + 40);  // Aligned with "Requested by" value
-        ctx.fillText(isStream ? 'LIVE' : formatDuration(duration), 130, infoY + 80);  // Aligned with other values
+        ctx.fillText(requester, 120, infoY);
+        ctx.fillText(sourceName, 120, infoY + 40);
+        ctx.fillText(isStream ? 'LIVE' : formatDuration(duration), 120, infoY + 80);
         
         // Information section - column 2
         ctx.fillStyle = '#a0a0a0';
@@ -227,8 +227,13 @@ async function generateMusicCard(options = {}) {
         
         switch(sourceName.toLowerCase()) {
             case 'youtube':
-                // Use music note icon instead of YouTube triangle
-                ctx.fillText('♪', 140, iconY);
+                // YouTube triangle play button
+                ctx.beginPath();
+                ctx.moveTo(135, iconY - 6);
+                ctx.lineTo(148, iconY);
+                ctx.lineTo(135, iconY + 6);
+                ctx.closePath();
+                ctx.fill();
                 break;
             case 'spotify':
                 ctx.fillText('♫', 140, iconY);
