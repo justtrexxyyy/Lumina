@@ -179,14 +179,17 @@ async function generateMusicCard(options = {}) {
         const sourceIconY = infoY + 12;
         const iconSize = 14;
         
-        // Display all sources the same way with normal text style and no icons
+        // Display all sources the same way with smaller text style and no icons
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.font = '14px Arial';
+        ctx.font = '12px Arial'; // Smaller font size for source
         
         // Draw source text in normal position
         ctx.fillText(sourceName, column2X, infoY + 12);
+        
+        // Reset font size for other elements
+        ctx.font = '14px Arial';
         
         // Volume value
         ctx.fillText(`${volume}%`, column2X, infoY + 36);
