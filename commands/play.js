@@ -68,7 +68,7 @@ module.exports = {
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                // Create simplified track added embed
+                // Create a simplified track added embed
                 const trackEmbed = createEmbed({
                     description: `${config.emojis.play} Added ${track.isStream ? '🔴 LIVE' : ''} [${track.title}](${track.uri}) to the queue`,
                     timestamp: true

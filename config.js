@@ -1,6 +1,6 @@
 module.exports = {
     botName: 'Audic',
-    botLogo: 'https://cdn.discordapp.com/attachments/1098183940499591188/1354742079561007254/copilot_image_1742024927163.jpg?ex=67e66561&is=67e513e1&hm=40a4effcb6c1e0bef698782fdfa5af13e2eaa8d0ccbd26fc86cafd09a872ad8f&',
+    botLogo: 'https://i.imgur.com/KoIfEYT.jpg',
     botDescription: 'Advanced music bot with high-quality audio playback and extensive playlist management features.',
     embedColor: '#5865F2',
     defaultVolume: 50,

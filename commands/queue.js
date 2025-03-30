@@ -51,8 +51,8 @@ module.exports = {
             totalQueueDuration += current.length - player.position;
         }
         
-        // Create queue description
-        let queueDescription = `**Now Playing:**\n[${current.title}](${current.uri}) \`[${current.isStream ? 'LIVE' : formatDuration(current.length)}]\` • <@${current.requester.id}>\n\n`;
+        // Create queue description without text-based music card
+        let queueDescription = `**Now Playing:**\n${current.isStream ? '🔴 LIVE | ' : ''}[${current.title}](${current.uri}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
         
         if (queue.length > 0) {
             queueDescription += `**Up Next:**\n`;
@@ -62,7 +62,7 @@ module.exports = {
             
             for (let i = startIndex; i < endIndex; i++) {
                 const track = queue[i];
-                queueDescription += `**${i + 1}.** [${track.title}](${track.uri}) \`[${track.isStream ? 'LIVE' : formatDuration(track.length)}]\` • <@${track.requester.id}>\n`;
+                queueDescription += `**${i + 1}.** ${track.isStream ? '🔴 ' : ''}[${track.title}](${track.uri}) | ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
             }
         } else {
             queueDescription += `**Up Next:**\nNo more tracks in queue`;

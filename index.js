@@ -1,10 +1,12 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, AttachmentBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { Shoukaku, Connectors } = require('shoukaku');
 const { Kazagumo, Plugins } = require('kazagumo');
 const config = require('./config');
+const { createMusicCard } = require('./utils/imageCard');
+const { formatDuration } = require('./utils/formatters');
 
 // Create client instance with required intents
 const client = new Client({
@@ -121,72 +123,162 @@ shoukaku.on('disconnect', (name, reason) => {
 });
 
 // Kazagumo events
-client.kazagumo.on('playerStart', (player, track) => {
+client.kazagumo.on('playerStart', async (player, track) => {
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
-        // Add artist information if available
-        const artistInfo = track.author ? `\n${config.emojis.artist} Artist: **${track.author}**` : '';
-        
-        const embed = {
-            title: `${config.emojis.nowPlaying} Now Playing`,
-            description: `${config.emojis.music} [${track.title}](${track.uri})${artistInfo}`,
-            fields: [
-                {
-                    name: `${config.emojis.duration} Duration`,
-                    value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
-                    inline: true
-                },
-                {
-                    name: `${config.emojis.user} Requested By`,
-                    value: `<@${track.requester.id}>`,
-                    inline: true
+        try {
+            // Generate music card image
+            console.log('Generating music card for:', track.title);
+            
+            // Determine the source platform
+            let sourcePlatform = 'Unknown';
+            if (track.uri) {
+                if (track.uri.includes('youtube.com') || track.uri.includes('youtu.be')) {
+                    sourcePlatform = 'YouTube';
+                } else if (track.uri.includes('soundcloud.com')) {
+                    sourcePlatform = 'SoundCloud';
+                } else if (track.uri.includes('spotify.com')) {
+                    sourcePlatform = 'Spotify';
+                } else if (track.uri.includes('twitch.tv')) {
+                    sourcePlatform = 'Twitch';
                 }
-            ],
-            thumbnail: {
-                url: track.thumbnail || config.botLogo
-            },
-            color: parseInt(config.embedColor.replace('#', ''), 16)
-        };
-        
-        // Add buttons for now playing message (without emojis)
-        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-        
-        const nowPlayingRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('pause')
-                    .setLabel('Pause/Resume')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('skip')
-                    .setLabel('Skip')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('queue')
-                    .setLabel('Queue')
-                    .setStyle(ButtonStyle.Success)
-            );
-        
-        const controlsRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('shuffle')
-                    .setLabel('Shuffle')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('loop')
-                    .setLabel('Loop')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('stop')
-                    .setLabel('Stop')
-                    .setStyle(ButtonStyle.Danger)
-            );
-        
-        channel.send({ 
-            embeds: [embed],
-            components: [nowPlayingRow, controlsRow]
-        }).catch(console.error);
+            }
+            
+            // Create the music card image
+            const musicCardPath = await createMusicCard(track, 0, player.volume, sourcePlatform, {
+                requester: track.requester
+            });
+            
+            // Create attachment from the generated image
+            const attachment = new AttachmentBuilder(musicCardPath, { name: 'music_card.jpg' });
+            
+            // Create a simplified embed with just the image card
+            const embed = {
+                title: `${config.emojis.nowPlaying} Now Playing`,
+                description: `${config.emojis.music} [${track.title}](${track.uri})`,
+                image: {
+                    url: 'attachment://music_card.jpg'
+                },
+                color: parseInt(config.embedColor.replace('#', ''), 16)
+            };
+            
+            // Add buttons for now playing message
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            
+            const nowPlayingRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('pause')
+                        .setLabel('Pause/Resume')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('skip')
+                        .setLabel('Skip')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('queue')
+                        .setLabel('Queue')
+                        .setStyle(ButtonStyle.Success)
+                );
+            
+            const controlsRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('shuffle')
+                        .setLabel('Shuffle')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('loop')
+                        .setLabel('Loop')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('stop')
+                        .setLabel('Stop')
+                        .setStyle(ButtonStyle.Danger)
+                );
+            
+            // Send message with music card image
+            await channel.send({ 
+                embeds: [embed],
+                files: [attachment],
+                components: [nowPlayingRow, controlsRow]
+            });
+            
+            // Clean up the temporary file after sending
+            fs.unlink(musicCardPath, (err) => {
+                if (err) console.error('Error removing temporary music card file:', err);
+            });
+            
+        } catch (error) {
+            console.error('Error generating music card:', error);
+            
+            // Fallback to normal embed without the image card
+            const artistInfo = track.author ? `\n${config.emojis.artist} Artist: **${track.author}**` : '';
+            
+            const embed = {
+                title: `${config.emojis.nowPlaying} Now Playing`,
+                description: `${config.emojis.music} [${track.title}](${track.uri})${artistInfo}`,
+                fields: [
+                    {
+                        name: `${config.emojis.duration} Duration`,
+                        value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
+                        inline: true
+                    },
+                    {
+                        name: `${config.emojis.user} Requested By`,
+                        value: `<@${track.requester.id}>`,
+                        inline: true
+                    }
+                ],
+                thumbnail: {
+                    url: track.thumbnail || config.botLogo
+                },
+                color: parseInt(config.embedColor.replace('#', ''), 16),
+                footer: {
+                    text: 'Music card image generation failed - using fallback embed'
+                }
+            };
+            
+            // Add buttons for now playing message (without emojis)
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            
+            const nowPlayingRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('pause')
+                        .setLabel('Pause/Resume')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('skip')
+                        .setLabel('Skip')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('queue')
+                        .setLabel('Queue')
+                        .setStyle(ButtonStyle.Success)
+                );
+            
+            const controlsRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('shuffle')
+                        .setLabel('Shuffle')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('loop')
+                        .setLabel('Loop')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('stop')
+                        .setLabel('Stop')
+                        .setStyle(ButtonStyle.Danger)
+                );
+            
+            channel.send({ 
+                embeds: [embed],
+                components: [nowPlayingRow, controlsRow]
+            }).catch(console.error);
+        }
     }
 });
 
@@ -497,20 +589,6 @@ client.kazagumo.on('playerError', (player, error) => {
         }, 5000);
     }
 });
-
-// Helper function for formatting duration
-function formatDuration(ms) {
-    const seconds = Math.floor((ms / 1000) % 60);
-    const minutes = Math.floor((ms / (1000 * 60)) % 60);
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-
-    const parts = [];
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    parts.push(`${seconds}s`);
-
-    return parts.join(' ');
-}
 
 // Login to Discord
 client.login(process.env.DISCORD_TOKEN).catch(console.error);

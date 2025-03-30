@@ -31,7 +31,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "ls -la && node -v && npm -v"
+args = "node test_image_card.js"
 
 [[workflows.workflow]]
 name = "DiscordMusicBot"
