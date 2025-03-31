@@ -26,11 +26,11 @@ async function generateMusicCard(options = {}) {
     } = options;
 
     // Canvas settings - match Discord dark theme
-    const WIDTH = 640;  // Slightly reduced width for better display on mobile
-    const HEIGHT = 240; // Reduced height for a more compact card
-    const THUMBNAIL_SIZE = 160;
-    const PROGRESS_BAR_WIDTH = 400;
-    const PROGRESS_BAR_HEIGHT = 8;  // Slimmer progress bar
+    const WIDTH = 600;  // Further reduced width for better display on mobile
+    const HEIGHT = 220; // Further reduced height for a more minimalist card
+    const THUMBNAIL_SIZE = 140;  // Slightly smaller thumbnail
+    const PROGRESS_BAR_WIDTH = 380;
+    const PROGRESS_BAR_HEIGHT = 6;  // Even slimmer progress bar
     const BORDER_RADIUS = 10;
     
     // Create canvas
@@ -169,10 +169,10 @@ async function generateMusicCard(options = {}) {
         
         // Column values - white
         ctx.fillStyle = '#ffffff';
-        ctx.font = '13px Arial';
+        ctx.font = '12px Arial'; // Reduced font size for values to match the source/volume
         
-        // Column 1 values
-        ctx.fillText(requester, column1X, infoY + 24);
+        // Column 1 values - with consistent spacing as other values
+        ctx.fillText(requester, column1X, infoY + 12);
         
         // Column 2 values - with source icon
         // Source icon (before text)
@@ -185,7 +185,7 @@ async function generateMusicCard(options = {}) {
         ctx.textBaseline = 'alphabetic';
         ctx.font = '12px Arial'; // Smaller font size for source, volume and loop
         
-        // Draw source text in normal position
+        // Draw source text in normal position without any directional indicators
         ctx.fillText(sourceName, column2X, infoY + 12);
         
         // Volume value (using smaller font) - increased vertical gap
@@ -447,7 +447,7 @@ async function createDefaultThumbnail(size) {
     ctx.font = `bold ${size/2}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('♪', size/2, size/2);
+    ctx.fillText('🎵', size/2, size/2);
     
     return canvas;
 }
@@ -459,10 +459,10 @@ async function createDefaultThumbnail(size) {
  */
 function getLoopModeName(loopMode) {
     switch (loopMode) {
-        case 'none': return 'Off';
-        case 'track': return 'Current Track';
-        case 'queue': return 'Queue';
-        default: return 'Off';
+        case 'none': return '<:loopoff:1234567890123456789> Off';
+        case 'track': return '<:looptrack:1234567890123456789> Current Track';
+        case 'queue': return '<:loopqueue:1234567890123456789> Queue';
+        default: return '<:loopoff:1234567890123456789> Off';
     }
 }
 

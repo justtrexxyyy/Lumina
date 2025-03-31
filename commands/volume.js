@@ -74,10 +74,10 @@ function createVolumeBar(volume) {
     const emptyBars = barLength - filledBars;
     
     let volumeIcon;
-    if (volume === 0) volumeIcon = '🔇';
-    else if (volume < 30) volumeIcon = '🔈';
-    else if (volume < 70) volumeIcon = '🔉';
-    else volumeIcon = '🔊';
+    if (volume === 0) volumeIcon = '<:volumemute:1234567890123456789>';
+    else if (volume < 30) volumeIcon = '<:volumelow:1234567890123456789>';
+    else if (volume < 70) volumeIcon = '<:volumemed:1234567890123456789>';
+    else volumeIcon = '<:volumehigh:1234567890123456789>';
     
     return `${volumeIcon} ${'▓'.repeat(filledBars)}${'░'.repeat(emptyBars)}`;
 }

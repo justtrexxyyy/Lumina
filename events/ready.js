@@ -8,8 +8,8 @@ module.exports = {
     async execute(client) {
         console.log(`Logged in as ${client.user.tag}`);
         
-        // Set bot activity
-        client.user.setActivity('/help | Music Bot', { type: 2 }); // 2 = Listening to
+        // Set bot activity to only show /help
+        client.user.setActivity('/help', { type: 2 }); // 2 = Listening to
 
         try {
             // Register slash commands

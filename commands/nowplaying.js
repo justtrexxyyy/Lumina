@@ -55,32 +55,13 @@ module.exports = {
             
             // No buttons needed anymore
             
-            // Get the next 3 tracks in queue for display
-            let queueInfo = '';
-            if (player.queue.length > 0) {
-                queueInfo = player.queue.slice(0, 3).map((track, index) => {
-                    return `**${index + 1}.** [${track.title}](${track.uri}) - ${formatDuration(track.length)}`;
-                }).join('\n');
-                
-                // Add a message if there are more tracks
-                if (player.queue.length > 3) {
-                    queueInfo += `\n... and ${player.queue.length - 3} more track${player.queue.length - 3 !== 1 ? 's' : ''}`;
-                }
-            } else {
-                queueInfo = 'No tracks in queue';
-            }
-            
-            // Enhanced embed with title, image card, and footer (no queue)
+            // Remove track details and queue display - simplified embed
             const npEmbed = {
-                title: `🎵 Now Playing ${current.isStream ? '(Live Stream)' : ''}`,
-                description: `**[${current.title}](${current.uri})**\nRequested by: ${current.requester}`,
+                title: `${config.emojis.nowPlaying} Now Playing ${current.isStream ? '(Live Stream)' : ''}`,
                 image: {
                     url: 'attachment://music_card.jpg'
                 },
-                color: parseInt(config.embedColor.replace('#', ''), 16),
-                footer: {
-                    text: `Loop: ${getLoopModeName(player.loop)} | Volume: ${player.volume}%`
-                }
+                color: parseInt(config.embedColor.replace('#', ''), 16)
             };
             
             // Edit the deferred reply with the embed and attachment, without buttons
@@ -105,7 +86,7 @@ module.exports = {
             let queueInfo = '';
             if (player.queue.length > 0) {
                 queueInfo = player.queue.slice(0, 3).map((track, index) => {
-                    return `**${index + 1}.** [${track.title}](${track.uri}) - ${formatDuration(track.length)}`;
+                    return `**${index + 1}.** ${track.title} - ${formatDuration(track.length)}`;
                 }).join('\n');
                 
                 // Add a message if there are more tracks
@@ -116,31 +97,14 @@ module.exports = {
                 queueInfo = 'No tracks in queue';
             }
             
-            // Create minimal fallback fields with simplified layout (no queue)
-            const fields = [
-                {
-                    name: 'Track Info',
-                    value: `**Duration:** ${isStream ? '🎬 LIVE' : durationFormatted}\n**Source:** ${sourcePlatform}\n**Volume:** ${player.volume}%`,
-                    inline: true
-                },
-                {
-                    name: 'Status',
-                    value: `**Position:** ${isStream ? 'N/A' : positionFormatted}\n**Loop:** ${getLoopModeName(player.loop)}\n**Queue:** ${player.queue.length} tracks`,
-                    inline: true
-                }
-            ];
-            
+            // Simplified fallback embed without track details
             const npEmbed = {
-                title: `🎵 Now Playing ${current.isStream ? '(Live Stream)' : ''}`,
-                description: `**[${current.title}](${current.uri})**\nRequested by: ${current.requester}`,
-                fields: fields,
+                title: `${config.emojis.nowPlaying} Now Playing ${current.isStream ? '(Live Stream)' : ''}`,
+                description: `Error generating music card, showing simplified view.`,
                 thumbnail: {
                     url: current.thumbnail || config.botLogo
                 },
-                color: parseInt(config.embedColor.replace('#', ''), 16),
-                footer: {
-                    text: `Loop: ${getLoopModeName(player.loop)} | Volume: ${player.volume}%`
-                }
+                color: parseInt(config.embedColor.replace('#', ''), 16)
             };
             
             // Edit the deferred reply with the fallback embed
@@ -168,10 +132,10 @@ function getSourcePlatform(uri) {
 
 function getLoopModeName(loopMode) {
     switch (loopMode) {
-        case 'none': return 'Off';
-        case 'track': return 'Current Track';
-        case 'queue': return 'Queue';
-        default: return 'Off';
+        case 'none': return '<:loopoff:1234567890123456789> Off';
+        case 'track': return '<:looptrack:1234567890123456789> Current Track';
+        case 'queue': return '<:loopqueue:1234567890123456789> Queue';
+        default: return '<:loopoff:1234567890123456789> Off';
     }
 }
 

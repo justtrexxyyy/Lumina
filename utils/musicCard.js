@@ -46,12 +46,12 @@ function generateMusicCard(track, position = 0, volume = 100, sourcePlatform = '
 ╭──────────── ${sourceIcon} Audic Music Player ────────────╮
 │                                                    │
 │  ${wrapTitle(title)}  │
-│  ${limitLength(`🎵 ${author}`, 50)}  │
+│  ${limitLength(`<:artist:1234567890123456789> ${author}`, 50)}  │
 ${isStream ? '│                                                    │' : `│  ${progressBar}  │`}
-${isStream ? '│                    🔴 LIVE                     │' : `│  ${progressInfo.padStart(7).padEnd(16)} • ${progressPercentage}%               │`}
+${isStream ? '│                    <:live:1234567890123456789> LIVE                     │' : `│  ${progressInfo.padStart(7).padEnd(16)} • ${progressPercentage}%               │`}
 │                                                    │
-│  ⏱️ ${isStream ? 'LIVE' : formatTimeStamp(duration)}  🔊 ${volume}%  👤 ${limitLength(requester, 15)}  │
-│  ${loopMode} Loop  📂 ${queueSize} in queue  ${sourceIcon} ${sourcePlatform}         │
+│  <:duration:1234567890123456789> ${isStream ? 'LIVE' : formatTimeStamp(duration)}  <:volume:1234567890123456789> ${volume}%  <:user:1234567890123456789> ${limitLength(requester, 15)}  │
+│  ${loopMode} Loop  <:queue:1234567890123456789> ${queueSize} in queue  ${sourceIcon} ${sourcePlatform}         │
 ╰────────────────────────────────────────────────────╯
 \`\`\``;
 }
@@ -71,17 +71,17 @@ function generateMiniMusicCard(track, position = 0) {
     const artist = track.author ? limitLength(track.author, 20) : 'Unknown Artist';
     
     // Format progress information
-    let progressBar = isStream ? '🔴 LIVE' : createTextProgressBar(position, duration, 20);
+    let progressBar = isStream ? '<:live:1234567890123456789> LIVE' : createTextProgressBar(position, duration, 20);
     let progressText = isStream ? 'LIVE' : `${formatTimeStamp(position)} / ${formatTimeStamp(duration)}`;
     
-    const sourceIcon = track.uri ? getSourceIcon(getSourceFromUrl(track.uri)) : '🎵';
+    const sourceIcon = track.uri ? getSourceIcon(getSourceFromUrl(track.uri)) : '<:music:1234567890123456789>';
     
     // Build the mini card with improved styling
     return `\`\`\`
 ╭────── ${sourceIcon} Now Playing ──────╮
 │ ${title.padEnd(30)} │
-│ 🎵 ${artist.padEnd(28)} │
-${isStream ? '│ 🔴 LIVE                     │' : `│ ${progressBar} │`}
+│ <:artist:1234567890123456789> ${artist.padEnd(28)} │
+${isStream ? '│ <:live:1234567890123456789> LIVE                     │' : `│ ${progressBar} │`}
 ${isStream ? '│                            │' : `│ ${progressText.padStart(28)} │`}
 ╰───────────────────────────╯
 \`\`\``;
@@ -107,11 +107,11 @@ function formatTimeStamp(ms) {
 
 function getSourceIcon(source) {
     switch (source.toLowerCase()) {
-        case 'youtube': return '▶️';
-        case 'spotify': return '🟢';
-        case 'soundcloud': return '🟠';
-        case 'twitch': return '🟣';
-        default: return '🎵';
+        case 'youtube': return '<:youtube:1234567890123456789>';
+        case 'spotify': return '<:spotify:1234567890123456789>';
+        case 'soundcloud': return '<:soundcloud:1234567890123456789>';
+        case 'twitch': return '<:twitch:1234567890123456789>';
+        default: return '<:music:1234567890123456789>';
     }
 }
 
@@ -134,10 +134,10 @@ function wrapTitle(title, maxLength = 45) {
 
 function getLoopModeIcon(loopMode) {
     switch (loopMode) {
-        case 'track': return '🔂';
-        case 'queue': return '🔁';
+        case 'track': return '<:looptrack:1234567890123456789>';
+        case 'queue': return '<:loopqueue:1234567890123456789>';
         case 'none': 
-        default: return '➡️';
+        default: return '<:loopoff:1234567890123456789>';
     }
 }
 

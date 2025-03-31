@@ -20,6 +20,7 @@ const client = new Client({
 client.commands = new Collection();
 client.twentyFourSeven = new Collection();
 client.autoplay = new Set();
+client.nowPlayingMessages = new Map(); // Map to store Now Playing messages (guildId -> messageId)
 
 // Initialize Shoukaku and Kazagumo
 const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.nodes, {
@@ -155,7 +156,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
             // Create a simplified embed with just the image card
             const embed = {
                 title: `${config.emojis.nowPlaying} Now Playing`,
-                description: `${config.emojis.music} [${track.title}](${track.uri})`,
+                description: `${config.emojis.music} ${track.title}`,
                 image: {
                     url: 'attachment://music_card.jpg'
                 },
@@ -197,11 +198,17 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setStyle(ButtonStyle.Danger)
                 );
             
-            // Send message with music card image
-            await channel.send({ 
+            // Send message with music card image and store the message ID
+            const message = await channel.send({ 
                 embeds: [embed],
                 files: [attachment],
                 components: [nowPlayingRow, controlsRow]
+            });
+            
+            // Store the message ID in the map
+            client.nowPlayingMessages.set(player.guildId, { 
+                channelId: channel.id, 
+                messageId: message.id 
             });
             
             // Clean up the temporary file after sending
@@ -217,7 +224,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
             
             const embed = {
                 title: `${config.emojis.nowPlaying} Now Playing`,
-                description: `${config.emojis.music} [${track.title}](${track.uri})${artistInfo}`,
+                description: `${config.emojis.music} ${track.title}${artistInfo}`,
                 fields: [
                     {
                         name: `${config.emojis.duration} Duration`,
@@ -277,6 +284,12 @@ client.kazagumo.on('playerStart', async (player, track) => {
             channel.send({ 
                 embeds: [embed],
                 components: [nowPlayingRow, controlsRow]
+            }).then(message => {
+                // Store the message ID in the map
+                client.nowPlayingMessages.set(player.guildId, { 
+                    channelId: channel.id, 
+                    messageId: message.id 
+                });
             }).catch(console.error);
         }
     }
@@ -287,6 +300,30 @@ client.kazagumo.on('playerEmpty', async (player) => {
     const guildId = player.guildId;
     
     console.log(`Player empty for guild ${guildId}`);
+    
+    // Delete the "Now Playing" message if it exists
+    try {
+        const messageInfo = client.nowPlayingMessages.get(guildId);
+        if (messageInfo) {
+            const messageChannel = client.channels.cache.get(messageInfo.channelId);
+            if (messageChannel) {
+                console.log(`Attempting to delete Now Playing message in channel ${messageInfo.channelId}`);
+                try {
+                    const message = await messageChannel.messages.fetch(messageInfo.messageId);
+                    if (message) {
+                        await message.delete();
+                        console.log(`Deleted Now Playing message for guild ${guildId}`);
+                    }
+                } catch (fetchError) {
+                    console.log(`Could not fetch/delete Now Playing message: ${fetchError.message}`);
+                }
+            }
+            // Remove from the map regardless of deletion success
+            client.nowPlayingMessages.delete(guildId);
+        }
+    } catch (error) {
+        console.error(`Error deleting Now Playing message: ${error.message}`);
+    }
     
     // Initialize autoplay set if it doesn't exist
     if (!client.autoplay) {

@@ -174,9 +174,9 @@ function calculatePlaylistDuration(tracks) {
 
 function getLoopModeName(loopMode) {
     switch (loopMode) {
-        case 'none': return 'Off';
-        case 'track': return 'Current Track';
-        case 'queue': return 'Queue';
-        default: return 'Off';
+        case 'none': return '<:loopoff:1234567890123456789> Off';
+        case 'track': return '<:looptrack:1234567890123456789> Current Track';
+        case 'queue': return '<:loopqueue:1234567890123456789> Queue';
+        default: return '<:loopoff:1234567890123456789> Off';
     }
 }

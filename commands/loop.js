@@ -70,19 +70,19 @@ module.exports = {
         
         switch (loopMode) {
             case 'none':
-                emoji = '➡️';
+                emoji = '<:loopoff:1234567890123456789>';
                 modeText = 'Disabled';
                 break;
             case 'track':
-                emoji = '🔂';
+                emoji = '<:looptrack:1234567890123456789>';
                 modeText = 'Current Track';
                 break;
             case 'queue':
-                emoji = '🔁';
+                emoji = '<:loopqueue:1234567890123456789>';
                 modeText = 'Queue';
                 break;
             default:
-                emoji = '❓';
+                emoji = '<:loopoff:1234567890123456789>';
                 modeText = 'Unknown';
         }
         
