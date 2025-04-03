@@ -31,8 +31,8 @@ module.exports = {
         nodes: [
             {
                 name: 'Main',
-                url: 'lavalink.example.com:443',
-                auth: 'your-password',
+                url: 'lava-v4.ajieblogs.eu.org:443',
+                auth: 'youshallnotpass',
                 secure: true
             }
         ]
