@@ -514,14 +514,32 @@ client.kazagumo.on('playerEmpty', async (player) => {
     if (client.twentyFourSeven.has(guildId)) return;
     
     if (channel) {
-        channel.send({ content: 'Queue ended! Leaving voice channel in 1 minute unless new songs are added.' }).catch(console.error);
+        const queueEndEmbed = createEmbed({
+            title: 'Queue Ended',
+            description: '⏹️ The music queue has ended.',
+            fields: [
+                {
+                    name: 'Auto Leave',
+                    value: 'I will leave the voice channel in 1 minute unless new songs are added.',
+                    inline: false
+                }
+            ],
+            color: '#ED4245'
+        });
+        
+        channel.send({ embeds: [queueEndEmbed] }).catch(console.error);
         
         // Set a timeout to destroy the player if no new songs are added
         setTimeout(() => {
             const currentPlayer = client.kazagumo.players.get(guildId);
             if (currentPlayer && currentPlayer.queue.isEmpty && !client.twentyFourSeven.has(guildId)) {
                 currentPlayer.destroy();
-                channel.send({ content: 'Left voice channel due to inactivity.' }).catch(console.error);
+                const leaveEmbed = createEmbed({
+                    title: 'Channel Left',
+                    description: '👋 Left voice channel due to inactivity.',
+                    color: '#ED4245'
+                });
+                channel.send({ embeds: [leaveEmbed] }).catch(console.error);
             }
         }, 60000);
     }
