@@ -64,30 +64,25 @@ module.exports = {
         // Set the loop mode
         player.setLoop(loopMode);
         
-        // Get emoji based on loop mode
-        let emoji;
+        // Set the mode text based on loop mode
         let modeText;
         
         switch (loopMode) {
             case 'none':
-                emoji = '<:loopoff:1234567890123456789>';
                 modeText = 'Disabled';
                 break;
             case 'track':
-                emoji = '<:looptrack:1234567890123456789>';
                 modeText = 'Current Track';
                 break;
             case 'queue':
-                emoji = '<:loopqueue:1234567890123456789>';
                 modeText = 'Queue';
                 break;
             default:
-                emoji = '<:loopoff:1234567890123456789>';
                 modeText = 'Unknown';
         }
         
         const loopEmbed = createEmbed({
-            title: `${emoji} Loop Mode: ${modeText}`,
+            title: `Loop Mode: ${modeText}`,
             description: `Loop mode has been set to **${modeText}**`,
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

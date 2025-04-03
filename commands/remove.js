@@ -58,7 +58,7 @@ module.exports = {
         player.queue.remove(trackIndex);
         
         const removeEmbed = createEmbed({
-            title: `${config.emojis.remove} Track Removed`,
+            title: `Track Removed`,
             description: `Removed [${removedTrack.title}](${removedTrack.uri}) from position #${position} in the queue`,
             fields: [
                 {

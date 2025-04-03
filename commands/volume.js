@@ -41,7 +41,7 @@ module.exports = {
         // If no volume level is specified, return the current volume
         if (volumeLevel === null) {
             const currentVolumeEmbed = createEmbed({
-                title: `${config.emojis.volume} Current Volume`,
+                title: `Current Volume`,
                 description: `The current volume is set to **${player.volume}%**`,
                 footer: `Use /volume <level> to change the volume`,
                 timestamp: true
@@ -57,7 +57,7 @@ module.exports = {
         const volumeBar = createVolumeBar(volumeLevel);
         
         const volumeEmbed = createEmbed({
-            title: `${config.emojis.volume} Volume Adjusted`,
+            title: `Volume Adjusted`,
             description: `Volume has been set to **${volumeLevel}%**\n\n${volumeBar}`,
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true
@@ -73,11 +73,12 @@ function createVolumeBar(volume) {
     const filledBars = Math.round((volume / 100) * barLength);
     const emptyBars = barLength - filledBars;
     
-    let volumeIcon;
-    if (volume === 0) volumeIcon = '<:volumemute:1234567890123456789>';
-    else if (volume < 30) volumeIcon = '<:volumelow:1234567890123456789>';
-    else if (volume < 70) volumeIcon = '<:volumemed:1234567890123456789>';
-    else volumeIcon = '<:volumehigh:1234567890123456789>';
+    // Use text indicators instead of emojis
+    let volumeLabel;
+    if (volume === 0) volumeLabel = "MUTED";
+    else if (volume < 30) volumeLabel = "LOW";
+    else if (volume < 70) volumeLabel = "MID";
+    else volumeLabel = "HIGH";
     
-    return `${volumeIcon} ${'▓'.repeat(filledBars)}${'░'.repeat(emptyBars)}`;
+    return `[${volumeLabel}] ${'▓'.repeat(filledBars)}${'░'.repeat(emptyBars)}`;
 }

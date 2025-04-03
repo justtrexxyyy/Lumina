@@ -35,7 +35,7 @@ module.exports = {
                         player.setVoiceChannel(voiceChannel.id);
                         
                         const successEmbed = createEmbed({
-                            title: `${config.emojis.connect} Voice Channel Changed`,
+                            title: `Voice Channel Changed`,
                             description: `I've moved to <#${voiceChannel.id}>!`,
                             footer: `Requested by ${interaction.user.tag}`,
                             timestamp: true
@@ -62,7 +62,7 @@ module.exports = {
                 });
                 
                 const successEmbed = createEmbed({
-                    title: `${config.emojis.connect} Connected to Voice Channel`,
+                    title: `Connected to Voice Channel`,
                     description: `I've joined <#${voiceChannel.id}>!\nUse </play:0> to start playing music.`,
                     footer: `Requested by ${interaction.user.tag}`,
                     timestamp: true

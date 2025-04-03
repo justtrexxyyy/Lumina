@@ -35,7 +35,7 @@ module.exports = {
         
         // Create and send the ping embed
         const pingEmbed = createEmbed({
-            title: `${config.emojis.ping} Pong!`,
+            title: `Pong!`,
             fields: [
                 {
                     name: 'API Latency',

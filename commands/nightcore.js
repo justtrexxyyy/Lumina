@@ -47,7 +47,7 @@ module.exports = {
             
             if (success) {
                 const successEmbed = createEmbed({
-                    title: `${config.emojis.filters} Filter Applied`,
+                    title: `Filter Applied`,
                     description: `Nightcore filter has been applied to the music. The music will play faster with a tremolo effect.`,
                     fields: [
                         { name: 'Now Playing', value: player.queue.current ? player.queue.current.title : 'Nothing playing', inline: true },

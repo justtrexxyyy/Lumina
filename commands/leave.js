@@ -43,7 +43,7 @@ module.exports = {
             
             // Create success message
             const leaveEmbed = createEmbed({
-                title: `${config.emojis.connect} Left Voice Channel`,
+                title: `Left Voice Channel`,
                 description: `I've left <#${member.voice.channelId}> and cleared the queue.`,
                 color: config.embedColor,
                 footer: `Requested by ${interaction.user.tag}`,

@@ -54,7 +54,7 @@ module.exports = {
         
         // Create and send the stats embed
         const statsEmbed = createEmbed({
-            title: `${config.emojis.stats} ${config.botName} Statistics`,
+            title: `${config.botName} Statistics`,
             fields: [
                 {
                     name: '🤖 Bot Stats',

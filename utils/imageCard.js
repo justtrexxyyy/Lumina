@@ -442,12 +442,12 @@ async function createDefaultThumbnail(size) {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
     
-    // Draw music note
+    // Draw music note symbol instead of emoji
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = `bold ${size/2}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🎵', size/2, size/2);
+    ctx.fillText('♪', size/2, size/2);
     
     return canvas;
 }
@@ -459,10 +459,10 @@ async function createDefaultThumbnail(size) {
  */
 function getLoopModeName(loopMode) {
     switch (loopMode) {
-        case 'none': return '<:loopoff:1234567890123456789> Off';
-        case 'track': return '<:looptrack:1234567890123456789> Current Track';
-        case 'queue': return '<:loopqueue:1234567890123456789> Queue';
-        default: return '<:loopoff:1234567890123456789> Off';
+        case 'none': return 'Off';
+        case 'track': return 'Current Track';
+        case 'queue': return 'Queue';
+        default: return 'Off';
     }
 }
 

@@ -9,7 +9,7 @@ module.exports = {
     
     async execute(interaction) {
         const supportEmbed = createEmbed({
-            title: `${config.emojis.support} Support Server`,
+            title: `Support Server`,
             description: `Need help with ${config.botName}? Join our support server for assistance!`,
             fields: [
                 {

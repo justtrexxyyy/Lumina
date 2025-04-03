@@ -43,7 +43,7 @@ module.exports = {
         const newState = !is247Enabled;
         
         const modeEmbed = createEmbed({
-            title: `${config.emojis.twentyFourSeven} 24/7 Mode`,
+            title: `24/7 Mode`,
             description: `24/7 mode is now **${newState ? 'enabled' : 'disabled'}**\n\n${newState ? 'I will stay in the voice channel even when the queue is empty' : 'I will leave the voice channel after a period of inactivity'}`,
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

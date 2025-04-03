@@ -104,7 +104,7 @@ module.exports = {
         }
         
         const skipEmbed = createEmbed({
-            title: `${config.emojis.skip} Track Skipped`,
+            title: `Track Skipped`,
             description: description,
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

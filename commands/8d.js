@@ -47,7 +47,7 @@ module.exports = {
             
             if (success) {
                 const successEmbed = createEmbed({
-                    title: `${config.emojis.filters} Filter Applied`,
+                    title: `Filter Applied`,
                     description: `8D audio filter has been applied to the music. You'll hear a rotating audio effect.`,
                     fields: [
                         { name: 'Now Playing', value: player.queue.current ? player.queue.current.title : 'Nothing playing', inline: true },

@@ -36,7 +36,7 @@ module.exports = {
             await player.pause(false);
             
             const resumeEmbed = createEmbed({
-                title: `${config.emojis.play} Playback Resumed`,
+                title: `Playback Resumed`,
                 description: 'The current playback has been resumed.',
                 footer: `Requested by ${interaction.user.tag}`,
                 timestamp: true
@@ -48,7 +48,7 @@ module.exports = {
             await player.pause(true);
             
             const pauseEmbed = createEmbed({
-                title: `${config.emojis.pause} Playback Paused`,
+                title: `Playback Paused`,
                 description: 'The current playback has been paused. Use `/pause` again to resume.',
                 footer: `Requested by ${interaction.user.tag}`,
                 timestamp: true

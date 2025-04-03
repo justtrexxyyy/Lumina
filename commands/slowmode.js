@@ -47,7 +47,7 @@ module.exports = {
             
             if (success) {
                 const successEmbed = createEmbed({
-                    title: `${config.emojis.filters} Filter Applied`,
+                    title: `Filter Applied`,
                     description: `Slow mode filter has been applied to the music. The playback speed will be reduced to 70%.`,
                     fields: [
                         { name: 'Now Playing', value: player.queue.current ? player.queue.current.title : 'Nothing playing', inline: true },

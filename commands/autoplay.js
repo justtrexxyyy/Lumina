@@ -49,7 +49,7 @@ module.exports = {
                 console.log(`Autoplay disabled for guild ${guildId}`);
                 
                 const disabledEmbed = createEmbed({
-                    title: `${config.emojis.stop} Autoplay Disabled`,
+                    title: `Autoplay Disabled`,
                     description: `Autoplay mode has been **disabled**. I will no longer automatically add related tracks when the queue ends.`,
                     footer: `Requested by ${interaction.user.tag}`,
                     timestamp: true
@@ -61,7 +61,7 @@ module.exports = {
                 console.log(`Autoplay enabled for guild ${guildId}`);
                 
                 const enabledEmbed = createEmbed({
-                    title: `${config.emojis.autoplay} Autoplay Enabled`,
+                    title: `Autoplay Enabled`,
                     description: `Autoplay mode has been **enabled**. I will automatically add related tracks when the queue ends.`,
                     footer: `Requested by ${interaction.user.tag}`,
                     timestamp: true

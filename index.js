@@ -1,12 +1,12 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { Shoukaku, Connectors } = require('shoukaku');
 const { Kazagumo, Plugins } = require('kazagumo');
 const config = require('./config');
-const { createMusicCard } = require('./utils/imageCard');
 const { formatDuration } = require('./utils/formatters');
+const { createEmbed } = require('./utils/embeds');
 
 // Create client instance with required intents
 const client = new Client({
@@ -128,43 +128,38 @@ client.kazagumo.on('playerStart', async (player, track) => {
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
         try {
-            // Generate music card image
-            console.log('Generating music card for:', track.title);
+            console.log('Track started playing:', track.title);
             
-            // Determine the source platform
-            let sourcePlatform = 'Unknown';
-            if (track.uri) {
-                if (track.uri.includes('youtube.com') || track.uri.includes('youtu.be')) {
-                    sourcePlatform = 'YouTube';
-                } else if (track.uri.includes('soundcloud.com')) {
-                    sourcePlatform = 'SoundCloud';
-                } else if (track.uri.includes('spotify.com')) {
-                    sourcePlatform = 'Spotify';
-                } else if (track.uri.includes('twitch.tv')) {
-                    sourcePlatform = 'Twitch';
-                }
-            }
-            
-            // Create the music card image
-            const musicCardPath = await createMusicCard(track, 0, player.volume, sourcePlatform, {
-                requester: track.requester
+            // Create standard embed
+            const embed = createEmbed({
+                title: `Now Playing`,
+                thumbnail: track.thumbnail || config.botLogo,
+                fields: [
+                    {
+                        name: 'Track',
+                        value: `[${track.title}](${config.supportServer})`,
+                        inline: false
+                    },
+                    {
+                        name: 'Artist',
+                        value: track.author || 'Unknown',
+                        inline: true
+                    },
+                    {
+                        name: 'Requested By',
+                        value: `<@${track.requester.id}>`,
+                        inline: true
+                    },
+                    {
+                        name: 'Duration',
+                        value: track.isStream ? 'LIVE' : formatDuration(track.length),
+                        inline: true
+                    }
+                ]
             });
             
-            // Create attachment from the generated image
-            const attachment = new AttachmentBuilder(musicCardPath, { name: 'music_card.jpg' });
-            
-            // Create a simplified embed with just the image card
-            const embed = {
-                title: `${config.emojis.nowPlaying} Now Playing`,
-                description: `${config.emojis.music} ${track.title}`,
-                image: {
-                    url: 'attachment://music_card.jpg'
-                },
-                color: parseInt(config.embedColor.replace('#', ''), 16)
-            };
-            
-            // Add buttons for now playing message
-            const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            // Add buttons and filter select menu for now playing message
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
             
             const nowPlayingRow = new ActionRowBuilder()
                 .addComponents(
@@ -197,12 +192,67 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setLabel('Stop')
                         .setStyle(ButtonStyle.Danger)
                 );
+                
+            // Get filters from utils/filters.js
+            const { getAvailableFilters, getFilterDisplayName } = require('./utils/filters');
             
-            // Send message with music card image and store the message ID
+            // Create a dropdown menu for filters
+            const filtersSelectMenu = new StringSelectMenuBuilder()
+                .setCustomId('filter_select')
+                .setPlaceholder('Select a filter')
+                .addOptions([
+                    {
+                        label: 'No Filter',
+                        description: 'Remove all filters',
+                        value: 'none'
+                    },
+                    {
+                        label: 'Bass Boost',
+                        description: 'Enhance the bass frequencies',
+                        value: 'bassboost'
+                    },
+                    {
+                        label: '8D Audio',
+                        description: 'Creates a spatial rotation effect',
+                        value: '8d'
+                    },
+                    {
+                        label: 'Nightcore',
+                        description: 'Faster with tremolo effect',
+                        value: 'nightcore'
+                    },
+                    {
+                        label: 'Vaporwave',
+                        description: 'Slowed down with reverb-like effect',
+                        value: 'vaporwave'
+                    },
+                    {
+                        label: 'Karaoke',
+                        description: 'Reduces vocals for karaoke',
+                        value: 'karaoke'
+                    },
+                    {
+                        label: 'Low Pass',
+                        description: 'Reduces high frequencies',
+                        value: 'lowpass'
+                    },
+                    {
+                        label: 'Slow Mode',
+                        description: 'Slows down the playback',
+                        value: 'slowmode'
+                    }
+                ]);
+            
+            // Create filter dropdown row
+            const filtersDropdownRow = new ActionRowBuilder()
+                .addComponents(filtersSelectMenu);
+            
+            // No more filter buttons - removed as requested
+            
+            // Send the embed with controls and filter dropdown (dropdown is now above control buttons)
             const message = await channel.send({ 
                 embeds: [embed],
-                files: [attachment],
-                components: [nowPlayingRow, controlsRow]
+                components: [filtersDropdownRow, nowPlayingRow, controlsRow]
             });
             
             // Store the message ID in the map
@@ -211,45 +261,20 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 messageId: message.id 
             });
             
-            // Clean up the temporary file after sending
-            fs.unlink(musicCardPath, (err) => {
-                if (err) console.error('Error removing temporary music card file:', err);
+        } catch (error) {
+            console.error('Error sending now playing message:', error);
+            
+            // Simple fallback embed
+            const embed = createEmbed({
+                title: `Now Playing`,
+                description: `[${track.title}](${config.supportServer})`,
+                footer: 'Error occurred while creating the full embed'
             });
             
-        } catch (error) {
-            console.error('Error generating music card:', error);
-            
-            // Fallback to normal embed without the image card
-            const artistInfo = track.author ? `\n${config.emojis.artist} Artist: **${track.author}**` : '';
-            
-            const embed = {
-                title: `${config.emojis.nowPlaying} Now Playing`,
-                description: `${config.emojis.music} ${track.title}${artistInfo}`,
-                fields: [
-                    {
-                        name: `${config.emojis.duration} Duration`,
-                        value: track.isStream ? '🔴 LIVE' : formatDuration(track.length),
-                        inline: true
-                    },
-                    {
-                        name: `${config.emojis.user} Requested By`,
-                        value: `<@${track.requester.id}>`,
-                        inline: true
-                    }
-                ],
-                thumbnail: {
-                    url: track.thumbnail || config.botLogo
-                },
-                color: parseInt(config.embedColor.replace('#', ''), 16),
-                footer: {
-                    text: 'Music card image generation failed - using fallback embed'
-                }
-            };
-            
-            // Add buttons for now playing message (without emojis)
+            // Add basic buttons
             const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
             
-            const nowPlayingRow = new ActionRowBuilder()
+            const controlsRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('pause')
@@ -260,30 +285,46 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setLabel('Skip')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
-                        .setCustomId('queue')
-                        .setLabel('Queue')
-                        .setStyle(ButtonStyle.Success)
-                );
-            
-            const controlsRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('shuffle')
-                        .setLabel('Shuffle')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('loop')
-                        .setLabel('Loop')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
                         .setCustomId('stop')
                         .setLabel('Stop')
                         .setStyle(ButtonStyle.Danger)
                 );
             
+            // Create a simplified dropdown for fallback
+            const { StringSelectMenuBuilder } = require('discord.js');
+            
+            const fallbackFilterMenu = new StringSelectMenuBuilder()
+                .setCustomId('filter_select')
+                .setPlaceholder('Select a filter')
+                .addOptions([
+                    {
+                        label: 'No Filter',
+                        description: 'Remove all filters',
+                        value: 'none'
+                    },
+                    {
+                        label: 'Bass Boost',
+                        description: 'Enhance the bass frequencies',
+                        value: 'bassboost'
+                    },
+                    {
+                        label: 'Nightcore',
+                        description: 'Faster with tremolo effect',
+                        value: 'nightcore'
+                    },
+                    {
+                        label: 'Vaporwave',
+                        description: 'Slowed down effect',
+                        value: 'vaporwave'
+                    }
+                ]);
+                
+            const fallbackFilterRow = new ActionRowBuilder()
+                .addComponents(fallbackFilterMenu);
+                
             channel.send({ 
                 embeds: [embed],
-                components: [nowPlayingRow, controlsRow]
+                components: [fallbackFilterRow, controlsRow]
             }).then(message => {
                 // Store the message ID in the map
                 client.nowPlayingMessages.set(player.guildId, { 
@@ -301,29 +342,9 @@ client.kazagumo.on('playerEmpty', async (player) => {
     
     console.log(`Player empty for guild ${guildId}`);
     
-    // Delete the "Now Playing" message if it exists
-    try {
-        const messageInfo = client.nowPlayingMessages.get(guildId);
-        if (messageInfo) {
-            const messageChannel = client.channels.cache.get(messageInfo.channelId);
-            if (messageChannel) {
-                console.log(`Attempting to delete Now Playing message in channel ${messageInfo.channelId}`);
-                try {
-                    const message = await messageChannel.messages.fetch(messageInfo.messageId);
-                    if (message) {
-                        await message.delete();
-                        console.log(`Deleted Now Playing message for guild ${guildId}`);
-                    }
-                } catch (fetchError) {
-                    console.log(`Could not fetch/delete Now Playing message: ${fetchError.message}`);
-                }
-            }
-            // Remove from the map regardless of deletion success
-            client.nowPlayingMessages.delete(guildId);
-        }
-    } catch (error) {
-        console.error(`Error deleting Now Playing message: ${error.message}`);
-    }
+    // No longer deleting the "Now Playing" message when player is empty
+    // This allows users to see what was playing even after it's stopped
+    // The message will be replaced when a new track starts playing
     
     // Initialize autoplay set if it doesn't exist
     if (!client.autoplay) {
@@ -356,7 +377,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     // If no track info available, inform the user and exit
                     console.log(`No track information available for autoplay`);
                     if (channel) {
-                        channel.send({ content: `${config.emojis.warning} **Autoplay**: Cannot find any track information to use as reference.` }).catch(console.error);
+                        channel.send({ content: `**Autoplay**: Cannot find any track information to use as reference.` }).catch(console.error);
                     }
                     return;
                 }
@@ -364,7 +385,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
             
             // Send a message that we're searching for similar tracks
             if (channel) {
-                channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Searching for similar tracks...` }).catch(console.error);
+                channel.send({ content: `**Autoplay**: Searching for similar tracks...` }).catch(console.error);
             }
             
             // Log track details for debugging
@@ -425,7 +446,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     if (!randomTrack || typeof randomTrack !== 'object') {
                         console.error(`Autoplay: Selected track at index ${randomIndex} is undefined or not an object`);
                         if (channel) {
-                            channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Invalid track data returned from search.` }).catch(console.error);
+                            channel.send({ content: `**Autoplay Error**: Invalid track data returned from search.` }).catch(console.error);
                         }
                         return;
                     }
@@ -451,14 +472,14 @@ client.kazagumo.on('playerEmpty', async (player) => {
                             } catch (e) {
                                 console.error(`Autoplay: Error starting playback: ${e.message}`);
                                 if (channel) {
-                                    channel.send({ content: `${config.emojis.warning} **Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
+                                    channel.send({ content: `**Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
                                 }
                             }
                         }
                         
                         // Send a message about the added track
                         if (channel) {
-                            channel.send({ content: `${config.emojis.autoplay} **Autoplay**: Added **${randomTrack.title}** to the queue.` }).catch(console.error);
+                            channel.send({ content: `**Autoplay**: Added **${randomTrack.title}** to the queue.` }).catch(console.error);
                         }
                         
                         // Don't proceed with the disconnect logic since we have autoplay
@@ -466,25 +487,25 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     } catch (playError) {
                         console.error(`Autoplay: Error in queue/play handling: ${playError.message}`);
                         if (channel) {
-                            channel.send({ content: `${config.emojis.warning} **Autoplay Error**: ${playError.message}` }).catch(console.error);
+                            channel.send({ content: `**Autoplay Error**: ${playError.message}` }).catch(console.error);
                         }
                     }
                 } else {
                     console.log(`Autoplay: No suitable tracks found after filtering`);
                     if (channel) {
-                        channel.send({ content: `${config.emojis.warning} **Autoplay**: Couldn't find any suitable related tracks to play.` }).catch(console.error);
+                        channel.send({ content: `**Autoplay**: Couldn't find any suitable related tracks to play.` }).catch(console.error);
                     }
                 }
             } else {
                 console.log(`Autoplay: No tracks found for query "${searchQuery}"`);
                 if (channel) {
-                    channel.send({ content: `${config.emojis.warning} **Autoplay**: Couldn't find any related tracks.` }).catch(console.error);
+                    channel.send({ content: `**Autoplay**: Couldn't find any related tracks.` }).catch(console.error);
                 }
             }
         } catch (error) {
             console.error('Autoplay Error:', error);
             if (channel) {
-                channel.send({ content: `${config.emojis.warning} **Autoplay Error**: An unexpected error occurred.` }).catch(console.error);
+                channel.send({ content: `**Autoplay Error**: An unexpected error occurred.` }).catch(console.error);
             }
         }
     }
@@ -512,20 +533,20 @@ client.kazagumo.on('playerException', (player, error) => {
     
     // Determine if we need to recover the player
     let needsRecovery = false;
-    let errorMessage = `${config.emojis.warning} **An error occurred while playing**: ${error.message || 'Unknown error'}`;
+    let errorMessage = `**An error occurred while playing**: ${error.message || 'Unknown error'}`;
     
     if (error.message) {
         if (error.message.includes('destroyed') || error.message.includes('not found')) {
             // Player was destroyed or not found
-            errorMessage = `${config.emojis.warning} **Connection Error**: Music player was disconnected unexpectedly. Use a command to reconnect.`;
+            errorMessage = `**Connection Error**: Music player was disconnected unexpectedly. Use a command to reconnect.`;
             needsRecovery = false; // Let the user reconnect manually
         } else if (error.message.includes('Track stuck') || error.message.includes('load failed')) {
             // Track playback issues
-            errorMessage = `${config.emojis.warning} **Playback Error**: The current track failed to load or got stuck. Skipping to the next song...`;
+            errorMessage = `**Playback Error**: The current track failed to load or got stuck. Skipping to the next song...`;
             needsRecovery = true;
         } else if (error.message.includes('Connection') || error.message.includes('WebSocket')) {
             // Connection issues
-            errorMessage = `${config.emojis.warning} **Connection Error**: Lost connection to the music server. Attempting to reconnect...`;
+            errorMessage = `**Connection Error**: Lost connection to the music server. Attempting to reconnect...`;
             needsRecovery = true;
         }
     }
@@ -560,15 +581,15 @@ client.kazagumo.on('playerError', (player, error) => {
     const channel = client.channels.cache.get(player.textId);
     
     // Build a more detailed error message
-    let errorMessage = `${config.emojis.warning} **Player Error**: ${error.message || 'Unknown error'}`;
+    let errorMessage = `**Player Error**: ${error.message || 'Unknown error'}`;
     
     if (error.message) {
         if (error.message.includes('No available nodes')) {
-            errorMessage = `${config.emojis.warning} **Connection Error**: Cannot connect to the music server. Please try again later.`;
+            errorMessage = `**Connection Error**: Cannot connect to the music server. Please try again later.`;
         } else if (error.message.includes('Failed to decode')) {
-            errorMessage = `${config.emojis.warning} **Playback Error**: This track cannot be played due to format issues. Please try another song.`;
+            errorMessage = `**Playback Error**: This track cannot be played due to format issues. Please try another song.`;
         } else if (error.message.includes('Track information not available')) {
-            errorMessage = `${config.emojis.warning} **Track Error**: Could not retrieve track information. The source may be unavailable.`;
+            errorMessage = `**Track Error**: Could not retrieve track information. The source may be unavailable.`;
         }
     }
     
@@ -610,7 +631,7 @@ client.kazagumo.on('playerError', (player, error) => {
                                 });
                                 
                                 if (channel) {
-                                    channel.send({ content: `${config.emojis.play} Successfully reconnected to the voice channel.` }).catch(console.error);
+                                    channel.send({ content: `Successfully reconnected to the voice channel.` }).catch(console.error);
                                 }
                             } catch (e) {
                                 console.error('Failed to create new player after error:', e);
@@ -628,4 +649,131 @@ client.kazagumo.on('playerError', (player, error) => {
 });
 
 // Login to Discord
+// Add interactionCreate handler for buttons and filter buttons
+client.on('interactionCreate', async (interaction) => {
+    // Handle button interactions for filters
+    if (interaction.isButton() && interaction.customId.startsWith('filter_')) {
+        const filterName = interaction.customId.replace('filter_', '');
+        const guild = interaction.guild;
+        const member = interaction.member;
+        
+        // Get the player instance for this server
+        const player = client.kazagumo.players.get(guild.id);
+        
+        if (!player) {
+            return interaction.reply({ 
+                content: 'There is no active player in this server!', 
+                ephemeral: true 
+            });
+        }
+        
+        // Check if user is in the same voice channel
+        if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+            return interaction.reply({ 
+                content: 'You must be in the same voice channel as the bot to use this!', 
+                ephemeral: true 
+            });
+        }
+        
+        try {
+            // Import filter utilities
+            const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
+            
+            // Handle 'none' selection (clear filters)
+            if (filterName === 'none') {
+                await clearFilters(player);
+                await interaction.reply({
+                    content: 'All filters have been cleared!',
+                    ephemeral: true
+                });
+            } else {
+                // Apply the selected filter
+                const success = await applyFilter(player, filterName);
+                
+                if (success) {
+                    await interaction.reply({
+                        content: `Applied the ${getFilterDisplayName(filterName)} filter!`,
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.reply({
+                        content: `Failed to apply the filter. Please try again.`,
+                        ephemeral: true
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error applying filter:', error);
+            await interaction.reply({
+                content: 'An error occurred while applying the filter.',
+                ephemeral: true
+            });
+        }
+        return;
+    }
+
+    // Only handle StringSelectMenu interactions if not a button
+    if (!interaction.isStringSelectMenu()) return;
+    
+    // Handle filter select menu (legacy support)
+    if (interaction.customId === 'filter_select') {
+        const selectedFilter = interaction.values[0];
+        const guild = interaction.guild;
+        const member = interaction.member;
+        
+        // Get the player instance for this server
+        const player = client.kazagumo.players.get(guild.id);
+        
+        if (!player) {
+            return interaction.reply({ 
+                content: 'There is no active player in this server!', 
+                ephemeral: true 
+            });
+        }
+        
+        // Check if user is in the same voice channel
+        if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+            return interaction.reply({ 
+                content: 'You must be in the same voice channel as the bot to use this!', 
+                ephemeral: true 
+            });
+        }
+        
+        try {
+            // Import filter utilities
+            const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
+            
+            // Handle 'none' selection (clear filters)
+            if (selectedFilter === 'none') {
+                await clearFilters(player);
+                await interaction.reply({
+                    content: 'All filters have been cleared!',
+                    ephemeral: true
+                });
+            } else {
+                // Apply the selected filter
+                const success = await applyFilter(player, selectedFilter);
+                
+                if (success) {
+                    await interaction.reply({
+                        content: `Applied the ${getFilterDisplayName(selectedFilter)} filter!`,
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.reply({
+                        content: `Failed to apply the filter. Please try again.`,
+                        ephemeral: true
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error applying filter:', error);
+            await interaction.reply({
+                content: 'An error occurred while applying the filter.',
+                ephemeral: true
+            });
+        }
+    }
+});
+
 client.login(process.env.DISCORD_TOKEN).catch(console.error);

@@ -123,7 +123,7 @@ module.exports = {
                 
                 if (!results || results.length === 0) {
                     // No lyrics found, create a helpful message
-                    lyrics = `${config.emojis.info} No lyrics found for **${displayTitle}** by **${displayArtist}**\n\n`;
+                    lyrics = `No lyrics found for **${displayTitle}** by **${displayArtist}**\n\n`;
                     lyrics += `You can try to find lyrics for this song at:\n`;
                     lyrics += `• Genius: https://genius.com/search?q=${encodeURIComponent(query)}\n`;
                     lyrics += `• AZLyrics: https://search.azlyrics.com/search.php?q=${encodeURIComponent(query)}\n`;
@@ -155,7 +155,7 @@ module.exports = {
                 
                 // Create the initial lyrics embed
                 const lyricsEmbed = createEmbed({
-                    title: `${config.emojis.lyrics} Lyrics`,
+                    title: `Lyrics`,
                     description: lyricsChunks[0],
                     footer: `Requested by ${interaction.user.tag}${lyricsChunks.length > 1 ? ` • Page 1/${lyricsChunks.length}` : ''}`,
                     timestamp: true
@@ -239,7 +239,7 @@ async function handlePagination(interaction, initialEmbed, chunks) {
         
         // Update the embed
         const updatedEmbed = createEmbed({
-            title: `${config.emojis.lyrics} Lyrics`,
+            title: `Lyrics`,
             description: chunks[currentPage],
             footer: `Requested by ${interaction.user.tag} • Page ${currentPage + 1}/${chunks.length}`,
             timestamp: true

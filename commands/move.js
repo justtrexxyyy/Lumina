@@ -82,7 +82,7 @@ module.exports = {
         player.queue.splice(toIndex, 0, trackToMove);
         
         const moveEmbed = createEmbed({
-            title: `${config.emojis.move} Track Moved`,
+            title: `Track Moved`,
             description: `Moved [${trackToMove.title}](${trackToMove.uri}) from position #${fromPosition} to #${toPosition}`,
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

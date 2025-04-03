@@ -52,7 +52,7 @@ module.exports = {
         }
         
         // Create queue description without text-based music card
-        let queueDescription = `**Now Playing:**\n${current.isStream ? '🔴 LIVE | ' : ''}${current.title} | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
+        let queueDescription = `**Now Playing:**\n${current.isStream ? '🔴 LIVE | ' : ''}[${current.title}](${config.supportServer}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
         
         if (queue.length > 0) {
             queueDescription += `**Up Next:**\n`;
@@ -62,7 +62,7 @@ module.exports = {
             
             for (let i = startIndex; i < endIndex; i++) {
                 const track = queue[i];
-                queueDescription += `**${i + 1}.** ${track.isStream ? '🔴 ' : ''}${track.title} | ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
+                queueDescription += `**${i + 1}.** ${track.isStream ? '🔴 ' : ''}[${track.title}](${config.supportServer}) | ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
             }
         } else {
             queueDescription += `**Up Next:**\nNo more tracks in queue`;
@@ -77,7 +77,7 @@ module.exports = {
         ];
         
         const queueEmbed = createEmbed({
-            title: `${config.emojis.queue} Queue for ${interaction.guild.name}`,
+            title: `Queue for ${interaction.guild.name}`,
             description: queueDescription,
             fields: [
                 {
@@ -116,9 +116,9 @@ function formatTotalDuration(ms) {
 
 function getLoopModeName(loopMode) {
     switch (loopMode) {
-        case 'none': return '<:loopoff:1234567890123456789> Off';
-        case 'track': return '<:looptrack:1234567890123456789> Current Track';
-        case 'queue': return '<:loopqueue:1234567890123456789> Queue';
-        default: return '<:loopoff:1234567890123456789> Off';
+        case 'none': return `Off`;
+        case 'track': return `Current Track`;
+        case 'queue': return `Queue`;
+        default: return `Off`;
     }
 }

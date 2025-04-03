@@ -40,7 +40,7 @@ module.exports = {
         player.queue.shuffle();
         
         const shuffleEmbed = createEmbed({
-            title: `${config.emojis.shuffle} Queue Shuffled`,
+            title: `Queue Shuffled`,
             description: `Successfully shuffled ${player.queue.length} tracks in the queue`,
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

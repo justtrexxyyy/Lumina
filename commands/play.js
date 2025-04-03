@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const config = require('../config');
 
@@ -12,6 +12,21 @@ module.exports = {
                 .setRequired(true)),
     
     async execute(interaction) {
+        // Store reference to helpers
+        const sendInitialError = async (message) => {
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ 
+                        embeds: [errorEmbed(message)], 
+                        ephemeral: true 
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to send initial error:', e);
+            }
+        };
+
+        // Get essential data
         const { client } = interaction;
         const query = interaction.options.getString('query');
         const guildId = interaction.guildId;
@@ -22,35 +37,40 @@ module.exports = {
         const voiceChannel = member.voice.channel;
         
         if (!voiceChannel) {
-            return interaction.reply({ embeds: [errorEmbed('You need to be in a voice channel to use this command!')], ephemeral: true });
+            return sendInitialError('You need to be in a voice channel to use this command!');
         }
         
         // Check bot permissions for the voice channel
         const permissions = voiceChannel.permissionsFor(interaction.client.user);
         if (!permissions.has('Connect') || !permissions.has('Speak')) {
-            return interaction.reply({ 
-                embeds: [errorEmbed('I need permissions to join and speak in your voice channel!')], 
-                ephemeral: true 
-            });
+            return sendInitialError('I need permissions to join and speak in your voice channel!');
         }
         
-        await interaction.deferReply();
-        
+        // Defer the reply to prevent timeout
+        let interactionHandled = false;
         try {
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.deferReply();
+            }
+            
             // Resolve the track/playlist
             const result = await client.kazagumo.search(query, { requester: interaction.user });
             
             if (!result || !result.tracks.length) {
-                return interaction.editReply({ embeds: [errorEmbed('No results found for your query!')] });
+                interactionHandled = true;
+                return await interaction.editReply({ 
+                    embeds: [errorEmbed('No results found for your query!')] 
+                });
             }
             
             // Create or get the player
-            const player = client.kazagumo.players.get(guildId) || await client.kazagumo.createPlayer({
-                guildId: guildId,
-                voiceId: voiceChannel.id,
-                textId: textChannel.id,
-                deaf: true
-            });
+            const player = client.kazagumo.players.get(guildId) || 
+                await client.kazagumo.createPlayer({
+                    guildId: guildId,
+                    voiceId: voiceChannel.id,
+                    textId: textChannel.id,
+                    deaf: true
+                });
             
             // Handle different result types
             if (result.type === 'PLAYLIST') {
@@ -58,11 +78,15 @@ module.exports = {
                 player.queue.add(result.tracks);
                 
                 const playlistEmbed = createEmbed({
-                    description: `${config.emojis.play} Added [${result.playlistName}](${query}) to the queue`,
+                    description: `Added [${result.playlistName}](${config.supportServer}) to the queue`,
                     timestamp: true
                 });
                 
-                await interaction.editReply({ embeds: [playlistEmbed], components: [] });
+                interactionHandled = true;
+                await interaction.editReply({ 
+                    embeds: [playlistEmbed], 
+                    components: [] 
+                });
             } else {
                 // Add single track
                 const track = result.tracks[0];
@@ -70,11 +94,15 @@ module.exports = {
                 
                 // Create a simplified track added embed
                 const trackEmbed = createEmbed({
-                    description: `${config.emojis.play} Added ${track.isStream ? '🔴 LIVE' : ''} [${track.title}](${track.uri}) to the queue`,
+                    description: `Added ${track.isStream ? 'LIVE ' : ''}[${track.title}](${config.supportServer}) to the queue`,
                     timestamp: true
                 });
                 
-                await interaction.editReply({ embeds: [trackEmbed], components: [] });
+                interactionHandled = true;
+                await interaction.editReply({ 
+                    embeds: [trackEmbed], 
+                    components: [] 
+                });
             }
             
             // Start playback if not already playing
@@ -99,14 +127,17 @@ module.exports = {
                         }
                     }
                     
-                    await interaction.editReply({ 
-                        embeds: [errorEmbed(`${config.emojis.warning} ${errorMsg}`)]
-                    });
-                    return;
+                    // Only attempt to edit if we haven't already provided a final response
+                    if (!interactionHandled && interaction.deferred) {
+                        await interaction.editReply({ 
+                            embeds: [errorEmbed(errorMsg)]
+                        }).catch(e => console.error('Failed to send playback error:', e));
+                        interactionHandled = true;
+                    }
                 }
             }
         } catch (error) {
-            console.error('Error while playing track:', error);
+            console.error('Error in play command:', error);
             
             // Create a user-friendly error message based on the error type
             let errorMessage = 'An unknown error occurred while processing your request.';
@@ -129,9 +160,23 @@ module.exports = {
                 }
             }
             
-            await interaction.editReply({ 
-                embeds: [errorEmbed(`${config.emojis.warning} ${errorMessage}`)]
-            });
+            // Only respond if we haven't already provided a final response
+            if (!interactionHandled) {
+                try {
+                    if (interaction.deferred) {
+                        await interaction.editReply({ 
+                            embeds: [errorEmbed(errorMessage)]
+                        });
+                    } else if (!interaction.replied) {
+                        await interaction.reply({ 
+                            embeds: [errorEmbed(errorMessage)], 
+                            ephemeral: true 
+                        });
+                    }
+                } catch (responseError) {
+                    console.error('Failed to send error response:', responseError);
+                }
+            }
         }
     },
 };
@@ -174,9 +219,9 @@ function calculatePlaylistDuration(tracks) {
 
 function getLoopModeName(loopMode) {
     switch (loopMode) {
-        case 'none': return '<:loopoff:1234567890123456789> Off';
-        case 'track': return '<:looptrack:1234567890123456789> Current Track';
-        case 'queue': return '<:loopqueue:1234567890123456789> Queue';
-        default: return '<:loopoff:1234567890123456789> Off';
+        case 'none': return 'Off';
+        case 'track': return 'Current Track';
+        case 'queue': return 'Queue';
+        default: return 'Off';
     }
 }

@@ -36,34 +36,15 @@ module.exports = {
             client.twentyFourSeven.delete(guildId);
         }
         
-        // Delete the "Now Playing" message if it exists
-        try {
-            const messageInfo = client.nowPlayingMessages.get(guildId);
-            if (messageInfo) {
-                const messageChannel = client.channels.cache.get(messageInfo.channelId);
-                if (messageChannel) {
-                    try {
-                        const message = await messageChannel.messages.fetch(messageInfo.messageId);
-                        if (message) {
-                            await message.delete();
-                            console.log(`Deleted Now Playing message due to stop command`);
-                        }
-                    } catch (fetchError) {
-                        console.log(`Could not fetch/delete Now Playing message: ${fetchError.message}`);
-                    }
-                }
-                // Remove from the map regardless of deletion success
-                client.nowPlayingMessages.delete(guildId);
-            }
-        } catch (error) {
-            console.error(`Error deleting Now Playing message during stop: ${error.message}`);
-        }
+        // No longer deleting the "Now Playing" message when using the stop command
+        // This allows users to see what was playing even after stopping
+        // The message will be replaced when a new track starts playing
         
         // Stop and destroy the player
         player.destroy();
         
         const stopEmbed = createEmbed({
-            title: `${config.emojis.stop} Player Stopped`,
+            title: `Player Stopped`,
             description: 'The player has been stopped and I have left the voice channel.',
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

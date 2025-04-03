@@ -20,7 +20,7 @@ function generateMusicCard(track, position = 0, volume = 100, sourcePlatform = '
     const title = limitLength(track.title, 42);
     const author = track.author || 'Unknown Artist';
     const requester = options.requester ? options.requester.username || 'Unknown' : 'Unknown';
-    const loopMode = options.loopMode ? getLoopModeIcon(options.loopMode) : '❌';
+    const loopMode = options.loopMode ? getLoopModeIcon(options.loopMode) : 'Off';
     const queueSize = options.queueSize !== undefined ? options.queueSize : 0;
     
     // Format progress information
@@ -29,7 +29,7 @@ function generateMusicCard(track, position = 0, volume = 100, sourcePlatform = '
     let progressInfo = '';
     
     if (isStream) {
-        progressInfo = '🔴 LIVE';
+        progressInfo = 'LIVE';
     } else {
         progressPercentage = Math.floor((position / duration) * 100);
         const posFormatted = formatTimeStamp(position);
@@ -43,16 +43,16 @@ function generateMusicCard(track, position = 0, volume = 100, sourcePlatform = '
     
     // Build the card template with improved styling
     return `\`\`\`
-╭──────────── ${sourceIcon} Audic Music Player ────────────╮
-│                                                    │
-│  ${wrapTitle(title)}  │
-│  ${limitLength(`<:artist:1234567890123456789> ${author}`, 50)}  │
-${isStream ? '│                                                    │' : `│  ${progressBar}  │`}
-${isStream ? '│                    <:live:1234567890123456789> LIVE                     │' : `│  ${progressInfo.padStart(7).padEnd(16)} • ${progressPercentage}%               │`}
-│                                                    │
-│  <:duration:1234567890123456789> ${isStream ? 'LIVE' : formatTimeStamp(duration)}  <:volume:1234567890123456789> ${volume}%  <:user:1234567890123456789> ${limitLength(requester, 15)}  │
-│  ${loopMode} Loop  <:queue:1234567890123456789> ${queueSize} in queue  ${sourceIcon} ${sourcePlatform}         │
-╰────────────────────────────────────────────────────╯
+╔══════════════ ${sourceIcon} ══════════════╗
+║                                          ║
+║  ${wrapTitle(title)}  ║
+║  ${limitLength(`${author}`, 50)}  ║
+${isStream ? '║                                          ║' : `║  ${progressBar}  ║`}
+${isStream ? '║             ♾️ LIVE STREAM              ║' : `║  ${progressInfo.padStart(7).padEnd(16)} • ${progressPercentage}%                     ║`}
+║                                          ║
+║  ${config.emojis.duration} ${isStream ? 'LIVE' : formatTimeStamp(duration)}  ${config.emojis.volume} ${volume}%  ${config.emojis.user} ${limitLength(requester, 12)}  ║
+║  ${config.emojis.loop} ${loopMode}  ${config.emojis.queue} ${queueSize} tracks       ║
+╚══════════════════════════════════════════╝
 \`\`\``;
 }
 
@@ -71,19 +71,21 @@ function generateMiniMusicCard(track, position = 0) {
     const artist = track.author ? limitLength(track.author, 20) : 'Unknown Artist';
     
     // Format progress information
-    let progressBar = isStream ? '<:live:1234567890123456789> LIVE' : createTextProgressBar(position, duration, 20);
+    let progressBar = isStream ? 'LIVE' : createTextProgressBar(position, duration, 20);
     let progressText = isStream ? 'LIVE' : `${formatTimeStamp(position)} / ${formatTimeStamp(duration)}`;
     
-    const sourceIcon = track.uri ? getSourceIcon(getSourceFromUrl(track.uri)) : '<:music:1234567890123456789>';
+    const sourceIcon = track.uri ? getSourceIcon(getSourceFromUrl(track.uri)) : 'Music';
+    
+    const config = require('../config');
     
     // Build the mini card with improved styling
     return `\`\`\`
-╭────── ${sourceIcon} Now Playing ──────╮
-│ ${title.padEnd(30)} │
-│ <:artist:1234567890123456789> ${artist.padEnd(28)} │
-${isStream ? '│ <:live:1234567890123456789> LIVE                     │' : `│ ${progressBar} │`}
-${isStream ? '│                            │' : `│ ${progressText.padStart(28)} │`}
-╰───────────────────────────╯
+╔═══════ ${config.emojis.nowPlaying} Now Playing ═══════╗
+║ ${title.padEnd(30)} ║
+║ ${artist.padEnd(30)} ║
+${isStream ? '║ ♾️ LIVE STREAM                    ║' : `║ ${progressBar} ║`}
+${isStream ? '║                                   ║' : `║ ${progressText.padStart(28)} ║`}
+╚═══════════════════════════════════╝
 \`\`\``;
 }
 
@@ -92,8 +94,15 @@ function createTextProgressBar(current, total, length = 20) {
     const percentage = Math.min(100, (current / total) * 100);
     const filledLength = Math.round((length * percentage) / 100);
     
-    let bar = '▰'.repeat(filledLength);
-    bar += '▱'.repeat(length - filledLength);
+    // Using more visually appealing Unicode block characters
+    let bar = '━'.repeat(filledLength);
+    
+    // Add position marker if not at start or end
+    if (filledLength > 0 && filledLength < length) {
+        bar = bar.substring(0, filledLength - 1) + '⭐' + '─'.repeat(length - filledLength);
+    } else {
+        bar += '─'.repeat(length - filledLength);
+    }
     
     return bar;
 }
@@ -106,12 +115,19 @@ function formatTimeStamp(ms) {
 }
 
 function getSourceIcon(source) {
+    const config = require('../config');
+    
     switch (source.toLowerCase()) {
-        case 'youtube': return '<:youtube:1234567890123456789>';
-        case 'spotify': return '<:spotify:1234567890123456789>';
-        case 'soundcloud': return '<:soundcloud:1234567890123456789>';
-        case 'twitch': return '<:twitch:1234567890123456789>';
-        default: return '<:music:1234567890123456789>';
+        case 'youtube':
+            return config.emojis.youtube + ' YouTube';
+        case 'spotify':
+            return config.emojis.spotify + ' Spotify';
+        case 'soundcloud':
+            return config.emojis.soundcloud + ' SoundCloud';
+        case 'twitch':
+            return config.emojis.loading + ' Twitch';
+        default:
+            return config.emojis.music + ' ' + source.charAt(0).toUpperCase() + source.slice(1).toLowerCase();
     }
 }
 
@@ -133,11 +149,16 @@ function wrapTitle(title, maxLength = 45) {
 }
 
 function getLoopModeIcon(loopMode) {
+    const config = require('../config');
+    
     switch (loopMode) {
-        case 'track': return '<:looptrack:1234567890123456789>';
-        case 'queue': return '<:loopqueue:1234567890123456789>';
+        case 'track': 
+            return config.emojis.loopTrack + ' Track';
+        case 'queue': 
+            return config.emojis.loopQueue + ' Queue';
         case 'none': 
-        default: return '<:loopoff:1234567890123456789>';
+        default: 
+            return config.emojis.loopOff + ' Off';
     }
 }
 

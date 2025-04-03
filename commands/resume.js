@@ -40,7 +40,7 @@ module.exports = {
         await player.pause(false);
         
         const resumeEmbed = createEmbed({
-            title: `${config.emojis.play} Playback Resumed`,
+            title: `Playback Resumed`,
             description: 'The current playback has been resumed.',
             footer: `Requested by ${interaction.user.tag}`,
             timestamp: true

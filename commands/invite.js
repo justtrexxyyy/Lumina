@@ -39,7 +39,7 @@ module.exports = {
             const supportServer = config.supportServer || 'https://discord.gg/76W85cu3Uy';
             
             const inviteEmbed = createEmbed({
-                title: `${config.emojis.invite} Invite ${config.botName}`,
+                title: `Invite ${config.botName}`,
                 description: `Thank you for your interest in ${config.botName}!\n\nClick the buttons below to invite the bot or join our support server:`,
                 fields: [
                     {

@@ -67,13 +67,13 @@ module.exports = {
                         if (player.paused) {
                             player.pause(false);
                             await interaction.reply({ 
-                                embeds: [successEmbed(`${config.emojis.play} Resumed playback`)],
+                                embeds: [successEmbed(`Resumed playback`)],
                                 ephemeral: true 
                             });
                         } else {
                             player.pause(true);
                             await interaction.reply({ 
-                                embeds: [successEmbed(`${config.emojis.pause} Paused playback`)],
+                                embeds: [successEmbed(`Paused playback`)],
                                 ephemeral: true 
                             });
                         }
@@ -82,15 +82,17 @@ module.exports = {
                     case 'skip':
                         player.skip();
                         await interaction.reply({ 
-                            embeds: [successEmbed(`${config.emojis.skip} Skipped to the next track`)],
+                            embeds: [successEmbed(`Skipped to the next track`)],
                             ephemeral: true 
                         });
                         break;
                         
                     case 'stop':
+                        // Don't delete the nowplaying message when using the button
+                        // Only destroy the player
                         player.destroy();
                         await interaction.reply({ 
-                            embeds: [successEmbed(`${config.emojis.stop} Stopped playback and left the voice channel`)],
+                            embeds: [successEmbed(`Stopped playback and left the voice channel`)],
                             ephemeral: true 
                         });
                         break;
@@ -171,7 +173,7 @@ module.exports = {
                             player.queue.shuffle();
                             
                             await interaction.reply({
-                                embeds: [successEmbed(`${config.emojis.shuffle || '🔀'} Successfully shuffled ${player.queue.length} tracks in the queue`)],
+                                embeds: [successEmbed(`Successfully shuffled ${player.queue.length} tracks in the queue`)],
                                 ephemeral: true
                             });
                         } catch (error) {

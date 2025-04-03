@@ -49,7 +49,7 @@ module.exports = {
             
             if (success) {
                 const successEmbed = createEmbed({
-                    title: `${config.emojis.filters} Filters Cleared`,
+                    title: `Filters Cleared`,
                     description: `All audio filters have been cleared. The audio will now play without any effects.`,
                     fields: [
                         { name: 'Now Playing', value: player.queue.current ? player.queue.current.title : 'Nothing playing', inline: true },

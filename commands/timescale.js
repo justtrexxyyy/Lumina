@@ -77,7 +77,7 @@ module.exports = {
                 await player.shoukaku.setFilters(timescaleFilter);
                 
                 const successEmbed = createEmbed({
-                    title: `${config.emojis.filters} Filter Applied`,
+                    title: `Filter Applied`,
                     description: `Timescale filter has been applied with custom parameters.`,
                     fields: [
                         { name: 'Now Playing', value: player.queue.current ? player.queue.current.title : 'Nothing playing', inline: true },
