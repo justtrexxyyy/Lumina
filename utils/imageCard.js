@@ -172,27 +172,31 @@ async function generateMusicCard(options = {}) {
         ctx.font = '12px Arial'; // Reduced font size for values to match the source/volume
         
         // Column 1 values - with consistent spacing as other values
-        ctx.fillText(requester, column1X, infoY + 12);
+        ctx.fillText(requester, column1X, infoY + 18); // Increased spacing between label and value
         
         // Column 2 values - with source icon
         // Source icon (before text)
         const sourceIconY = infoY + 12;
         const iconSize = 14;
         
-        // Display all sources the same way with smaller text style and no icons
+        // Display source with an arrow for YouTube or icon indicator
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
         ctx.font = '12px Arial'; // Smaller font size for source, volume and loop
         
-        // Draw source text in normal position without any directional indicators
-        ctx.fillText(sourceName, column2X, infoY + 12);
+        // Draw source text with right-pointing arrow for YouTube
+        if (sourceName.toLowerCase() === 'youtube') {
+            ctx.fillText(`${sourceName} →`, column2X, infoY + 18); // Added right arrow for YouTube and adjusted spacing
+        } else {
+            ctx.fillText(sourceName, column2X, infoY + 18); // Adjusted spacing to match "Requested by"
+        }
         
         // Volume value (using smaller font) - increased vertical gap
         ctx.fillText(`${volume}%`, column2X, infoY + 48);
         
         // Column 3 values (using smaller font)
-        ctx.fillText(getLoopModeName(loopMode), column3X, infoY + 12);
+        ctx.fillText(getLoopModeName(loopMode), column3X, infoY + 18); // Adjusted spacing to match other columns
         
         // Reset font size for other elements
         ctx.font = '14px Arial';
