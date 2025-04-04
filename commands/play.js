@@ -53,8 +53,18 @@ module.exports = {
                 await interaction.deferReply();
             }
             
-            // Resolve the track/playlist
-            const result = await client.kazagumo.search(query, { requester: interaction.user });
+            // Resolve the track/playlist with better error handling
+            const result = await client.kazagumo.search(query, { requester: interaction.user })
+                .catch(error => {
+                    console.error('Search error in play command:', error);
+                    if (error.message && error.message.includes('AbortError')) {
+                        throw new Error('Connection to music server was interrupted. Please try again.');
+                    } else if (error.message && error.message.includes('fetch failed')) {
+                        throw new Error('Unable to connect to music server. Please try again later.');
+                    } else {
+                        throw new Error(`Unable to search: ${error.message || 'Unknown error'}`);
+                    }
+                });
             
             if (!result || !result.tracks.length) {
                 interactionHandled = true;

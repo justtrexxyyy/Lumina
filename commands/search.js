@@ -108,16 +108,25 @@ module.exports = {
                 const selectedTrack = tracks[selectedIndex];
                 
                 try {
-                    // We'll try directly without checking for node connections first
-                    // This allows us to attempt the connection even if we can't directly verify node status
+                    // Get existing player or create a new one
+                    let player = client.kazagumo.players.get(guildId);
                     
-                    // Create or get player with error handling
-                    const player = client.kazagumo.createPlayer({
-                        guildId: guildId,
-                        voiceId: member.voice.channel.id,
-                        textId: interaction.channelId,
-                        deaf: true
-                    });
+                    if (!player) {
+                        player = await client.kazagumo.createPlayer({
+                            guildId: guildId,
+                            voiceId: member.voice.channel.id,
+                            textId: interaction.channelId,
+                            deaf: true
+                        });
+                        
+                        // Wait briefly to ensure the player is fully initialized
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                    
+                    // Verify player is properly initialized before accessing queue
+                    if (!player || !player.queue) {
+                        throw new Error('Unable to initialize player. Please try again.');
+                    }
                     
                     // Play the selected track
                     player.queue.add(selectedTrack);

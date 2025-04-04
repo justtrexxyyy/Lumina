@@ -22,13 +22,13 @@ client.twentyFourSeven = new Collection();
 client.autoplay = new Set();
 client.nowPlayingMessages = new Map(); // Map to store Now Playing messages (guildId -> messageId)
 
-// Initialize Shoukaku and Kazagumo
+// Initialize Shoukaku and Kazagumo with more robust error handling
 const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.nodes, {
     moveOnDisconnect: false,
     resume: true,
-    resumeTimeout: 30,
-    reconnectTries: 2,
-    restTimeout: 10000,
+    resumeTimeout: 60, // Increased from 30 to 60
+    reconnectTries: 5, // Increased from 2 to 5
+    restTimeout: 15000, // Increased from 10000 to 15000
     userAgent: 'Audic/1.0.0',
     structures: {
         // Set debug to false to disable all WebSocket debug logs
@@ -108,20 +108,33 @@ shoukaku.on('disconnect', (name, players, moved) => {
     }, 5000);
 });
 shoukaku.on('error', (name, error) => {
-    // Only log critical errors
-    if (error && error.message && (
-        error.message.includes('Connection reset') || 
-        error.message.includes('ECONNREFUSED') ||
-        error.message.includes('connection') ||
-        error.message.includes('Transport failed')
-    )) {
+    console.error(`Lavalink ${name} Error:`, error.message || 'Unknown error');
+    
+    // Handle various error types with customized reconnection strategies
+    if (error && error.message) {
+        // Prepare for reconnection
+        let reconnectDelay = 10000; // Default 10 seconds
+        
+        if (error.message.includes('AbortError')) {
+            console.log('Connection aborted, will try again shortly...');
+            reconnectDelay = 5000; // Shorter delay for abort errors
+        } else if (error.message.includes('ECONNREFUSED') || error.message.includes('Connection refused')) {
+            console.log('Connection refused, server may be down. Will retry in a moment...');
+            reconnectDelay = 15000; // Longer delay for refused connections
+        } else if (error.message.includes('Transport failed') || error.message.includes('Connection reset')) {
+            console.log('Transport error detected, reconnecting...');
+            reconnectDelay = 7500; // Medium delay for transport issues
+        }
+        
+        // Schedule reconnection with the appropriate delay
         setTimeout(() => {
             try {
                 shoukaku.reconnect();
+                console.log(`Attempting to reconnect to Lavalink ${name}...`);
             } catch (reconnectErr) {
-                console.error(`Reconnection failed`);
+                console.error(`Failed to reconnect to Lavalink ${name}:`, reconnectErr.message || 'Unknown error');
             }
-        }, 10000);
+        }, reconnectDelay);
     }
 });
 
