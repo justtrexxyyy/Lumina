@@ -57,7 +57,7 @@ module.exports = {
             title: `${config.botName} Statistics`,
             fields: [
                 {
-                    name: '🤖 Bot Stats',
+                    name: 'Bot Stats',
                     value: [
                         `Servers: ${serverCount}`,
                         `Channels: ${channelCount}`,
@@ -68,7 +68,7 @@ module.exports = {
                     inline: true
                 },
                 {
-                    name: '💻 System Stats',
+                    name: 'System Stats',
                     value: [
                         `Memory: ${memoryUsed} MB / ${memoryTotal} GB`,
                         `CPU: ${cpuModel}`,
@@ -79,7 +79,7 @@ module.exports = {
                     inline: true
                 },
                 {
-                    name: '🎵 Lavalink Stats',
+                    name: 'Lavalink Stats',
                     value: lavalinkStats,
                     inline: false
                 }

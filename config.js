@@ -1,6 +1,7 @@
 
 module.exports = {
     botName: 'Audic',
+    botDescription: 'A high-quality music bot for Discord with support for YouTube, Spotify, and SoundCloud.',
     embedColor: '#7289DA',
     supportServer: 'https://discord.gg/76W85cu3Uy',
     botLogo: '',

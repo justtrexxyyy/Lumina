@@ -37,7 +37,7 @@ module.exports = {
      */
     errorEmbed: (message) => {
         return {
-            title: '❌ Error',
+            title: 'Error',
             description: message,
             color: 0xED4245, // Discord red color
             timestamp: new Date()
@@ -51,7 +51,7 @@ module.exports = {
      */
     successEmbed: (message) => {
         return {
-            title: '✅ Success',
+            title: 'Success',
             description: message,
             color: 0x57F287, // Discord green color
             timestamp: new Date()

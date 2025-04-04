@@ -6,10 +6,11 @@ module.exports = {
     name: 'ready',
     once: true,
     async execute(client) {
+        const config = require('../config');
         console.log(`Logged in as ${client.user.tag}`);
         
         // Set bot activity to only show /help
-        client.user.setActivity('/help', { type: 2 }); // 2 = Listening to
+        client.user.setActivity('/help | ' + config.botDescription, { type: 2 }); // 2 = Listening to
 
         try {
             // Register slash commands
