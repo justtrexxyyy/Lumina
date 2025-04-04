@@ -52,7 +52,7 @@ module.exports = {
         }
         
         // Create queue description without text-based music card
-        let queueDescription = `**Now Playing:**\n${current.isStream ? '🔴 LIVE | ' : ''}[${current.title}](${config.supportServer}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
+        let queueDescription = `**Now Playing:**\n${current.isStream ? 'LIVE | ' : ''}[${current.title}](${config.supportServer}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
         
         if (queue.length > 0) {
             queueDescription += `**Up Next:**\n`;
@@ -62,7 +62,7 @@ module.exports = {
             
             for (let i = startIndex; i < endIndex; i++) {
                 const track = queue[i];
-                queueDescription += `**${i + 1}.** ${track.isStream ? '🔴 ' : ''}[${track.title}](${config.supportServer}) | ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
+                queueDescription += `**${i + 1}.** ${track.isStream ? 'LIVE ' : ''}[${track.title}](${config.supportServer}) | ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
             }
         } else {
             queueDescription += `**Up Next:**\nNo more tracks in queue`;
@@ -82,16 +82,16 @@ module.exports = {
             fields: [
                 {
                     name: 'Queue Info',
-                    value: queueStats.join(' • ')
+                    value: queueStats.join(' | ')
                 }
             ],
-            footer: `Page ${page}/${totalPages} • Use /queue <page> to view more`,
+            footer: `Page ${page}/${totalPages} | Use /queue <page> to view more`,
             timestamp: true
         });
         
         // Add navigation buttons if there are multiple pages
         if (totalPages > 1) {
-            queueEmbed.footer.text += ` • ${queue.length} tracks in queue`;
+            queueEmbed.footer.text += ` | ${queue.length} tracks in queue`;
         }
         
         await interaction.reply({ embeds: [queueEmbed] });

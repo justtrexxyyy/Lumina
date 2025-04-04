@@ -83,7 +83,7 @@ module.exports = {
             const track = currentTracks[i];
             const position = startIndex + i + 1;
             const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
-            result += `**${position}.** [${track.title}](${track.uri}) \`[${duration}]\` • <@${track.requester.id}>\n`;
+            result += `**${position}.** [${track.title}](${track.uri}) \`[${duration}]\` | <@${track.requester.id}>\n`;
         }
         
         return result;

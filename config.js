@@ -1,10 +1,15 @@
 
 module.exports = {
     botName: 'Audic',
-    botDescription: 'A high-quality music bot for Discord with support for YouTube, Spotify, and SoundCloud.',
+    botDescription: 'Your ultimate music bot for seamless audio streaming on Discord.',
     embedColor: '#7289DA',
-    supportServer: 'https://discord.gg/76W85cu3Uy',
-    botLogo: '',
+    supportServer: process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy',
+    botLogo: 'https://i.imgur.com/aSN4yCn.png',
+    genius: {
+        apiKey: process.env.GENIUS_API_KEY,
+        clientToken: process.env.GENIUS_CLIENT_TOKEN,
+        accessToken: process.env.GENIUS_ACCESS_TOKEN
+    },
     emojis: {
         play: '',
         pause: '',

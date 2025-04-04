@@ -2,9 +2,13 @@ const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = re
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const config = require('../config');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const Genius = require('genius-lyrics');
 
-// Base URL for LRCLib API
-const API_BASE_URL = 'https://lrclib.net/api/search';
+// Initialize Genius client
+const geniusClient = new Genius.Client(config.genius.apiKey);
+
+// Fallback to LRCLib API if Genius fails
+const LRCLIB_API_URL = 'https://lrclib.net/api/search';
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -101,52 +105,92 @@ module.exports = {
             console.log(`Searching lyrics for: ${query} (Artist: ${artistName}, Track: ${trackName})`);
             
             try {
-                // Construct search parameters
-                const searchParams = new URLSearchParams();
-                if (artistName) searchParams.append('artist_name', artistName);
-                if (trackName) searchParams.append('track_name', trackName);
-                
-                // Call the LRCLib API
-                const searchUrl = `${API_BASE_URL}?${searchParams.toString()}`;
-                console.log(`LRCLib API URL: ${searchUrl}`);
-                
-                const response = await fetch(searchUrl);
-                if (!response.ok) {
-                    throw new Error(`LRCLib API returned ${response.status}: ${response.statusText}`);
-                }
-                
-                const results = await response.json();
-                
+                // First, try to get lyrics from Genius API
                 let lyrics = '';
                 let displayTitle = trackName || query;
                 let displayArtist = artistName || "Unknown Artist";
                 
-                if (!results || results.length === 0) {
-                    // No lyrics found, create a helpful message
-                    lyrics = `No lyrics found for **${displayTitle}** by **${displayArtist}**\n\n`;
-                    lyrics += `You can try to find lyrics for this song at:\n`;
-                    lyrics += `• Genius: https://genius.com/search?q=${encodeURIComponent(query)}\n`;
-                    lyrics += `• AZLyrics: https://search.azlyrics.com/search.php?q=${encodeURIComponent(query)}\n`;
-                    lyrics += `• LRCLib: https://lrclib.net/search?q=${encodeURIComponent(query)}\n`;
-                } else {
-                    // Use the first result
-                    const result = results[0];
-                    displayTitle = result.trackName || displayTitle;
-                    displayArtist = result.artistName || displayArtist;
+                console.log(`Searching Genius for lyrics: ${query}`);
+                
+                try {
+                    // Search using genius-lyrics NPM package
+                    const searches = await geniusClient.songs.search(query);
                     
-                    // Create a header with song info
-                    lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                    if (searches && searches.length > 0) {
+                        // Get the first result (most relevant)
+                        const firstSong = searches[0];
+                        console.log(`Found song on Genius: ${firstSong.title} by ${firstSong.artist.name}`);
+                        
+                        // Get lyrics for this song
+                        const fetchedLyrics = await firstSong.lyrics();
+                        
+                        if (fetchedLyrics) {
+                            displayTitle = firstSong.title;
+                            displayArtist = firstSong.artist.name;
+                            
+                            // Create the lyrics string with song info
+                            lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                            lyrics += fetchedLyrics;
+                            
+                            // Add source attribution
+                            lyrics += `\n\n*Lyrics provided by Genius*`;
+                        }
+                    }
+                } catch (geniusError) {
+                    console.error('Error with Genius API, falling back to LRCLib:', geniusError);
+                    // Continue to LRCLib fallback
+                }
+                
+                // If no lyrics found on Genius, fall back to LRCLib
+                if (!lyrics) {
+                    console.log('No lyrics found on Genius, trying LRCLib');
                     
-                    if (result.plainLyrics) {
-                        lyrics += result.plainLyrics;
-                    } else if (result.syncedLyrics) {
-                        // Convert synced lyrics to plain text by removing timestamps
-                        lyrics += result.syncedLyrics
-                            .split('\n')
-                            .map(line => line.replace(/\[\d+:\d+\.\d+\]/g, ''))
-                            .join('\n');
+                    // Construct search parameters for LRCLib
+                    const searchParams = new URLSearchParams();
+                    if (artistName) searchParams.append('artist_name', artistName);
+                    if (trackName) searchParams.append('track_name', trackName);
+                    
+                    // Call the LRCLib API
+                    const searchUrl = `${LRCLIB_API_URL}?${searchParams.toString()}`;
+                    console.log(`LRCLib API URL: ${searchUrl}`);
+                    
+                    const response = await fetch(searchUrl);
+                    if (!response.ok) {
+                        throw new Error(`LRCLib API returned ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const results = await response.json();
+                    
+                    if (!results || results.length === 0) {
+                        // No lyrics found in either API, create a helpful message
+                        lyrics = `No lyrics found for **${displayTitle}** by **${displayArtist}**\n\n`;
+                        lyrics += `You can try to find lyrics for this song at:\n`;
+                        lyrics += `• Genius: https://genius.com/search?q=${encodeURIComponent(query)}\n`;
+                        lyrics += `• AZLyrics: https://search.azlyrics.com/search.php?q=${encodeURIComponent(query)}\n`;
+                        lyrics += `• LRCLib: https://lrclib.net/search?q=${encodeURIComponent(query)}\n`;
                     } else {
-                        lyrics += "Lyrics were found but could not be displayed.";
+                        // Use the first result
+                        const result = results[0];
+                        displayTitle = result.trackName || displayTitle;
+                        displayArtist = result.artistName || displayArtist;
+                        
+                        // Create a header with song info
+                        lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                        
+                        if (result.plainLyrics) {
+                            lyrics += result.plainLyrics;
+                        } else if (result.syncedLyrics) {
+                            // Convert synced lyrics to plain text by removing timestamps
+                            lyrics += result.syncedLyrics
+                                .split('\n')
+                                .map(line => line.replace(/\[\d+:\d+\.\d+\]/g, ''))
+                                .join('\n');
+                        } else {
+                            lyrics += "Lyrics were found but could not be displayed.";
+                        }
+                        
+                        // Add source attribution
+                        lyrics += `\n\n*Lyrics provided by LRCLib*`;
                     }
                 }
                 
@@ -168,9 +212,9 @@ module.exports = {
                     await interaction.editReply({ embeds: [lyricsEmbed] });
                 }
             } catch (error) {
-                console.error('Error in lyrics API:', error);
+                console.error('Error in lyrics APIs:', error);
                 return interaction.editReply({ 
-                    embeds: [errorEmbed(`Failed to fetch lyrics from LRCLib: ${error.message}`)] 
+                    embeds: [errorEmbed(`Failed to fetch lyrics: ${error.message}`)] 
                 });
             }
         } catch (error) {

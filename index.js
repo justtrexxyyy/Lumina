@@ -28,7 +28,12 @@ const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.
     resume: true,
     resumeTimeout: 30,
     reconnectTries: 2,
-    restTimeout: 10000
+    restTimeout: 10000,
+    userAgent: 'Audic/1.0.0',
+    structures: {
+        // Set debug to false to disable all WebSocket debug logs
+        debug: false
+    }
 });
 
 client.kazagumo = new Kazagumo({
@@ -74,60 +79,50 @@ for (const file of eventFiles) {
 
 // Shoukaku events
 shoukaku.on('ready', (name) => console.log(`Lavalink ${name}: Ready!`));
-shoukaku.on('close', (name, code, reason) => console.warn(`Lavalink ${name}: Closed, Code ${code}, Reason ${reason || 'No reason'}`));
-shoukaku.on('debug', (name, info) => console.debug(`Lavalink ${name}: Debug,`, info));
+shoukaku.on('close', (name, code, reason) => {
+    // Only log server closure for non-normal close codes
+    if (code !== 1000 && code < 4000) {
+        console.warn(`Lavalink ${name}: Closed, Code ${code}`);
+        setTimeout(() => {
+            try {
+                shoukaku.reconnect();
+            } catch (reconnectErr) {
+                // Only log critical reconnection errors
+                console.error(`Reconnection failed`);
+            }
+        }, 5000);
+    }
+});
+// Removed debug event listener to reduce log spam
 shoukaku.on('disconnect', (name, players, moved) => {
     if (moved) return;
     players.map(player => player.connection.disconnect());
-    console.warn(`Lavalink ${name}: Disconnected`);
+    
+    setTimeout(() => {
+        try {
+            shoukaku.reconnect();
+        } catch (reconnectErr) {
+            // Only log critical errors
+            console.error(`Reconnection failed`);
+        }
+    }, 5000);
 });
 shoukaku.on('error', (name, error) => {
-    console.error(`Lavalink ${name}: Error Caught,`, error);
-    // Attempt to reconnect or handle the error
+    // Only log critical errors
     if (error && error.message && (
         error.message.includes('Connection reset') || 
         error.message.includes('ECONNREFUSED') ||
         error.message.includes('connection') ||
         error.message.includes('Transport failed')
     )) {
-        console.log(`Lavalink ${name}: Connection issue detected, attempting to reconnect in 10 seconds...`);
         setTimeout(() => {
             try {
-                console.log(`Lavalink ${name}: Attempting reconnection...`);
                 shoukaku.reconnect();
             } catch (reconnectErr) {
-                console.error(`Lavalink ${name}: Reconnection failed:`, reconnectErr);
+                console.error(`Reconnection failed`);
             }
         }, 10000);
     }
-});
-shoukaku.on('close', (name, code, reason) => {
-    console.warn(`Lavalink ${name}: Closed, Code ${code}, Reason ${reason || 'No reason'}`);
-    // Attempt to reconnect for specific close codes
-    if (code === 1000 || code >= 4000) {
-        console.log(`Lavalink ${name}: Non-error close code, no action needed.`);
-    } else {
-        console.log(`Lavalink ${name}: Unexpected close code, attempting to reconnect in 5 seconds...`);
-        setTimeout(() => {
-            try {
-                shoukaku.reconnect();
-            } catch (reconnectErr) {
-                console.error(`Lavalink ${name}: Reconnection failed:`, reconnectErr);
-            }
-        }, 5000);
-    }
-});
-shoukaku.on('disconnect', (name, reason) => {
-    console.warn(`Lavalink ${name}: Disconnected, Reason ${reason || 'No reason'}`);
-    // Attempt to reconnect on disconnect
-    console.log(`Lavalink ${name}: Attempting reconnection in 5 seconds...`);
-    setTimeout(() => {
-        try {
-            shoukaku.reconnect();
-        } catch (reconnectErr) {
-            console.error(`Lavalink ${name}: Reconnection failed:`, reconnectErr);
-        }
-    }, 5000);
 });
 
 // Kazagumo events
@@ -135,74 +130,37 @@ client.kazagumo.on('playerStart', async (player, track) => {
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
         try {
-            console.log('Track started playing:', track.title);
-            
-            // Create standard embed
+            // Create smaller embed with createEmbed instead of setAuthor to avoid iconURL issues
             const embed = createEmbed({
-                title: `Now Playing`,
-                thumbnail: track.thumbnail || config.botLogo,
-                fields: [
-                    {
-                        name: 'Track',
-                        value: `[${track.title}](${config.supportServer})`,
-                        inline: false
-                    },
-                    {
-                        name: 'Artist',
-                        value: track.author || 'Unknown',
-                        inline: true
-                    },
-                    {
-                        name: 'Requested By',
-                        value: `<@${track.requester.id}>`,
-                        inline: true
-                    },
-                    {
-                        name: 'Duration',
-                        value: track.isStream ? 'LIVE' : formatDuration(track.length),
-                        inline: true
-                    }
-                ]
+                title: 'Now Playing',
+                thumbnail: track.thumbnail || null,
+                description: `**[${track.title}](${track.uri || config.supportServer})**\n${track.author || 'Unknown'} • ${track.isStream ? 'LIVE' : formatDuration(track.length)} • <@${track.requester.id}>`
             });
             
             // Add buttons and filter select menu for now playing message
             const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
             
+            // Button row with essential controls
             const nowPlayingRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('pause')
-                        .setLabel('Pause/Resume')
+                        .setLabel('Pause')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('resume')
+                        .setLabel('Resume')
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setCustomId('replay')
+                        .setLabel('Replay')
                         .setStyle(ButtonStyle.Secondary),
                     new ButtonBuilder()
                         .setCustomId('skip')
                         .setLabel('Skip')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('queue')
-                        .setLabel('Queue')
-                        .setStyle(ButtonStyle.Success)
-                );
-            
-            const controlsRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('shuffle')
-                        .setLabel('Shuffle')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('loop')
-                        .setLabel('Loop')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
-                        .setCustomId('stop')
-                        .setLabel('Stop')
-                        .setStyle(ButtonStyle.Danger)
+                        .setStyle(ButtonStyle.Secondary)
                 );
                 
-            // Get filters from utils/filters.js
-            const { getAvailableFilters, getFilterDisplayName } = require('./utils/filters');
-            
             // Create a dropdown menu for filters
             const filtersSelectMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
@@ -254,9 +212,20 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const filtersDropdownRow = new ActionRowBuilder()
                 .addComponents(filtersSelectMenu);
             
-            // No more filter buttons - removed as requested
+            // Add additional control buttons
+            const controlsRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('shuffle')
+                        .setLabel('Shuffle')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('stop')
+                        .setLabel('Stop')
+                        .setStyle(ButtonStyle.Danger)
+                );
             
-            // Send the embed with controls and filter dropdown (dropdown is now above control buttons)
+            // Send the embed with controls and filter dropdown
             const message = await channel.send({ 
                 embeds: [embed],
                 components: [filtersDropdownRow, nowPlayingRow, controlsRow]
@@ -278,27 +247,8 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 footer: 'Error occurred while creating the full embed'
             });
             
-            // Add basic buttons
-            const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-            
-            const controlsRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('pause')
-                        .setLabel('Pause/Resume')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
-                        .setCustomId('skip')
-                        .setLabel('Skip')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('stop')
-                        .setLabel('Stop')
-                        .setStyle(ButtonStyle.Danger)
-                );
-            
             // Create a simplified dropdown for fallback
-            const { StringSelectMenuBuilder } = require('discord.js');
+            const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
             
             const fallbackFilterMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
@@ -331,7 +281,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 
             channel.send({ 
                 embeds: [embed],
-                components: [fallbackFilterRow, controlsRow]
+                components: [fallbackFilterRow]
             }).then(message => {
                 // Store the message ID in the map
                 client.nowPlayingMessages.set(player.guildId, { 
@@ -347,24 +297,17 @@ client.kazagumo.on('playerEmpty', async (player) => {
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
     
-    console.log(`Player empty for guild ${guildId}`);
-    
     // No longer deleting the "Now Playing" message when player is empty
     // This allows users to see what was playing even after it's stopped
     // The message will be replaced when a new track starts playing
     
     // Initialize autoplay set if it doesn't exist
     if (!client.autoplay) {
-        console.log(`Creating autoplay Set in playerEmpty event`);
         client.autoplay = new Set();
     }
     
-    // Check if autoplay is enabled for this guild
-    console.log(`Checking autoplay status for guild ${guildId}: ${client.autoplay.has(guildId) ? 'Enabled' : 'Disabled'}`);
-    
+    // Check if autoplay is enabled for this guild and proceed if enabled
     if (client.autoplay.has(guildId)) {
-        console.log(`Autoplay is enabled for guild ${guildId}, attempting to find related tracks`);
-        
         try {
             // Get the last played track to find related tracks
             let lastTrack;
@@ -372,17 +315,12 @@ client.kazagumo.on('playerEmpty', async (player) => {
             // Try to get the previous track from player.queue
             if (player.queue && player.queue.previous) {
                 lastTrack = player.queue.previous;
-                console.log(`Found previous track in queue: ${lastTrack.title}`);
             } else {
-                // If no previous track, check player.current or try with a default search
-                console.log(`No previous track found in queue, checking alternatives`);
-                
+                // If no previous track, check player.current
                 if (player.current) {
                     lastTrack = player.current;
-                    console.log(`Using current track as reference: ${lastTrack.title}`);
                 } else {
                     // If no track info available, inform the user and exit
-                    console.log(`No track information available for autoplay`);
                     if (channel) {
                         channel.send({ content: `**Autoplay**: Cannot find any track information to use as reference.` }).catch(console.error);
                     }
@@ -392,57 +330,61 @@ client.kazagumo.on('playerEmpty', async (player) => {
             
             // Send a message that we're searching for similar tracks
             if (channel) {
-                channel.send({ content: `**Autoplay**: Searching for similar tracks...` }).catch(console.error);
+                channel.send({ content: `**Autoplay**: Finding music similar to **${lastTrack.title}**...` }).catch(console.error);
             }
-            
-            // Log track details for debugging
-            console.log(`Autoplay: Reference track details:`, {
-                title: lastTrack.title || 'Unknown',
-                uri: lastTrack.uri || 'No URI',
-                author: lastTrack.author || 'Unknown'
-            });
             
             // Determine search query - prefer URI, fall back to title+author
             let searchQuery;
-            let searchMethod;
             
             if (lastTrack.uri) {
                 searchQuery = lastTrack.uri;
-                searchMethod = 'URI';
             } else {
                 searchQuery = `${lastTrack.author ? lastTrack.author + ' - ' : ''}${lastTrack.title}`;
-                searchMethod = 'title/artist';
             }
-            
-            console.log(`Autoplay: Searching by ${searchMethod}: "${searchQuery}"`);
             
             // Search for related tracks
             const result = await client.kazagumo.search(searchQuery, { 
+                engine: 'youtube',
                 requester: lastTrack.requester || { id: client.user.id, username: client.user.username } 
             }).catch(e => {
-                console.log(`Autoplay: Error searching: ${e.message}`);
                 return null;
             });
             
             if (result && result.tracks && result.tracks.length > 0) {
-                console.log(`Autoplay: Found ${result.tracks.length} tracks for search query`);
-                
-                // Filter out the track that just played if possible
-                let filteredTracks = result.tracks;
-                
-                if (lastTrack.uri || lastTrack.title) {
-                    filteredTracks = result.tracks.filter(track => {
-                        // Compare by URI if available, otherwise by title
-                        if (lastTrack.uri && track.uri) {
-                            return track.uri !== lastTrack.uri;
-                        } else if (lastTrack.title && track.title) {
-                            return track.title !== lastTrack.title;
+                // Filter out the track that just played and any videos (prefer music)
+                let filteredTracks = result.tracks.filter(track => {
+                    // More aggressive filtering of video content
+                    if (track.title) {
+                        const lowerTitle = track.title.toLowerCase();
+                        
+                        // Filter out obvious video content
+                        if (lowerTitle.includes('video') || 
+                            lowerTitle.includes('official vid') || 
+                            lowerTitle.includes('mv') || 
+                            lowerTitle.includes('m/v') ||
+                            lowerTitle.includes('music video') || 
+                            lowerTitle.includes('live performance') || 
+                            lowerTitle.includes('concert footage') ||
+                            lowerTitle.includes('behind the scenes')) {
+                            return false;
                         }
-                        return true; // Keep if we can't compare
-                    });
+                    }
                     
-                    console.log(`Autoplay: After filtering out reference track, ${filteredTracks.length} tracks remain`);
-                }
+                    // Check duration - music typically isn't extremely long
+                    // Filter out very long videos (more than 10 minutes)
+                    if (track.duration && track.duration > 600000) {
+                        return false;
+                    }
+                    
+                    // Filter out the track that just played
+                    if (lastTrack.uri && track.uri) {
+                        return track.uri !== lastTrack.uri;
+                    } else if (lastTrack.title && track.title) {
+                        return track.title !== lastTrack.title;
+                    }
+                    
+                    return true; // Keep if we can't compare
+                });
                 
                 if (filteredTracks.length > 0) {
                     // Randomly select one of the tracks, with proper error checking
@@ -458,53 +400,45 @@ client.kazagumo.on('playerEmpty', async (player) => {
                         return;
                     }
                     
-                    console.log(`Autoplay: Selected track ${randomIndex+1}/${filteredTracks.length}: ${randomTrack.title || 'Unknown Title'}`);
-                    
                     try {
                         // Verify the track has required properties before adding to queue
                         if (!randomTrack.title) {
-                            console.warn(`Autoplay: Track is missing title property, adding with placeholder title`);
                             randomTrack.title = "Unknown Track";
                         }
                         
                         // Add the track to the queue
                         player.queue.add(randomTrack);
-                        console.log(`Autoplay: Added track to queue`);
                         
                         // Play it (since the queue was empty)
                         if (!player.playing && !player.paused) {
-                            console.log(`Autoplay: Starting playback of the new track`);
                             try {
                                 await player.play();
                             } catch (e) {
-                                console.error(`Autoplay: Error starting playback: ${e.message}`);
                                 if (channel) {
                                     channel.send({ content: `**Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
                                 }
                             }
                         }
                         
-                        // Send a message about the added track
+                        // Send a message about the autoplay track
                         if (channel) {
-                            channel.send({ content: `**Autoplay**: Added **${randomTrack.title}** to the queue.` }).catch(console.error);
+                            // Changed from "Added to queue" style messaging to make it clear this is autoplay
+                            channel.send({ content: `**Autoplay**: Selected next track: **${randomTrack.title}**` }).catch(console.error);
                         }
                         
                         // Don't proceed with the disconnect logic since we have autoplay
                         return;
                     } catch (playError) {
-                        console.error(`Autoplay: Error in queue/play handling: ${playError.message}`);
                         if (channel) {
                             channel.send({ content: `**Autoplay Error**: ${playError.message}` }).catch(console.error);
                         }
                     }
                 } else {
-                    console.log(`Autoplay: No suitable tracks found after filtering`);
                     if (channel) {
                         channel.send({ content: `**Autoplay**: Couldn't find any suitable related tracks to play.` }).catch(console.error);
                     }
                 }
             } else {
-                console.log(`Autoplay: No tracks found for query "${searchQuery}"`);
                 if (channel) {
                     channel.send({ content: `**Autoplay**: Couldn't find any related tracks.` }).catch(console.error);
                 }
@@ -597,7 +531,11 @@ client.kazagumo.on('playerEmpty', async (player) => {
 });
 
 client.kazagumo.on('playerException', (player, error) => {
-    console.error('Player Exception:', error);
+    // Only log critical errors
+    if (error && error.message && error.message.includes('destroyed')) {
+        console.error('Critical player exception:', error.message);
+    }
+    
     const channel = client.channels.cache.get(player.textId);
     
     // Determine if we need to recover the player
@@ -629,24 +567,25 @@ client.kazagumo.on('playerException', (player, error) => {
         try {
             // Skip to next song if available, otherwise stop
             if (player.queue.length > 0) {
-                console.log('Attempting to recover player by skipping to next track');
-                player.skip().catch(e => {
-                    console.error('Failed to skip to next track during recovery:', e);
+                player.skip().catch(() => {
                     // If skip fails, try to stop and destroy
-                    player.destroy().catch(console.error);
+                    player.destroy().catch(() => {});
                 });
             } else {
-                console.log('No tracks in queue to recover with, destroying player');
-                player.destroy().catch(console.error);
+                player.destroy().catch(() => {});
             }
         } catch (recoveryError) {
-            console.error('Failed to recover player after exception:', recoveryError);
+            // Silent catch
         }
     }
 });
 
 client.kazagumo.on('playerError', (player, error) => {
-    console.error('Player Error:', error);
+    // Only log critical errors
+    if (error && error.message && (error.message.includes('No available nodes') || error.message.includes('destroyed'))) {
+        console.error('Critical player error:', error.message);
+    }
+    
     const channel = client.channels.cache.get(player.textId);
     
     // Build a more detailed error message
@@ -663,7 +602,7 @@ client.kazagumo.on('playerError', (player, error) => {
     }
     
     if (channel) {
-        channel.send({ content: errorMessage }).catch(console.error);
+        channel.send({ content: errorMessage }).catch(() => {});
     }
     
     // Attempt to reconnect if needed
@@ -672,21 +611,18 @@ client.kazagumo.on('playerError', (player, error) => {
          error.message.includes('Connection') || 
          error.message.includes('WebSocket'))) {
         
-        console.log('Connection-related player error, attempting to reconnect in 5 seconds...');
-        
         setTimeout(() => {
             try {
                 // Check if Lavalink nodes are available
                 const nodesAvailable = shoukaku.nodes.filter(node => node.state === 1);
                 
                 if (nodesAvailable.length > 0) {
-                    console.log('Lavalink nodes available, attempting to reconnect player');
                     const guildId = player.guildId;
                     const voiceId = player.voiceId;
                     const textId = player.textId;
                     
                     // Destroy current player
-                    player.destroy().catch(console.error);
+                    player.destroy().catch(() => {});
                     
                     // Create a new player after a short delay
                     setTimeout(() => {
@@ -700,18 +636,16 @@ client.kazagumo.on('playerError', (player, error) => {
                                 });
                                 
                                 if (channel) {
-                                    channel.send({ content: `Successfully reconnected to the voice channel.` }).catch(console.error);
+                                    channel.send({ content: `Successfully reconnected to the voice channel.` }).catch(() => {});
                                 }
                             } catch (e) {
-                                console.error('Failed to create new player after error:', e);
+                                // Silent catch for failed player creation
                             }
                         }
                     }, 2000);
-                } else {
-                    console.log('No Lavalink nodes available for reconnection');
                 }
             } catch (reconnectError) {
-                console.error('Error during player reconnection attempt:', reconnectError);
+                // Silent catch
             }
         }, 5000);
     }

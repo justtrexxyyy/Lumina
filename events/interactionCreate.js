@@ -2,6 +2,15 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createEmbed, errorEmbed, successEmbed } = require('../utils/embeds');
 const config = require('../config');
 
+// Helper function to create volume bar for volume buttons
+function createVolumeBar(volume) {
+    const maxBars = 10;
+    const filledBars = Math.round((volume / 100) * maxBars);
+    const emptyBars = maxBars - filledBars;
+    
+    return '▓'.repeat(filledBars) + '░'.repeat(emptyBars);
+}
+
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
@@ -21,20 +30,28 @@ module.exports = {
                 
                 // Only handle the error if the interaction is still valid and hasn't timed out
                 try {
-                    const errorResponse = {
-                        embeds: [errorEmbed('There was an error while executing this command!')],
-                        ephemeral: true
-                    };
+                    const errorMessage = 'There was an error while executing this command!';
                     
+                    // Try to reply depending on the current interaction state
                     if (interaction.replied) {
-                        await interaction.followUp(errorResponse).catch(e => console.error('Could not follow up with error:', e));
+                        await interaction.followUp({ 
+                            content: errorMessage,
+                            ephemeral: true 
+                        }).catch(e => console.error('Could not follow up with error:', e));
                     } else if (interaction.deferred) {
-                        await interaction.editReply(errorResponse).catch(e => console.error('Could not edit reply with error:', e));
+                        await interaction.editReply({ 
+                            content: errorMessage,
+                            ephemeral: true 
+                        }).catch(e => console.error('Could not edit reply with error:', e));
                     } else {
-                        await interaction.reply(errorResponse).catch(e => console.error('Could not reply with error:', e));
+                        await interaction.reply({ 
+                            content: errorMessage,
+                            ephemeral: true 
+                        }).catch(e => console.error('Could not reply with error:', e));
                     }
                 } catch (followUpError) {
                     console.error('Error sending error response:', followUpError);
+                    // We can't do anything more if this fails
                 }
             }
         }
@@ -45,175 +62,299 @@ module.exports = {
             const player = client.kazagumo.players.get(guild.id);
             
             if (!player) {
-                return interaction.reply({ 
-                    embeds: [errorEmbed('No active player found!')], 
-                    ephemeral: true 
-                });
+                try {
+                    await interaction.reply({ 
+                        content: 'No active player found! Start playback with the /play command.',
+                        ephemeral: true 
+                    });
+                } catch (error) {
+                    console.error('Error replying to no player found:', error);
+                }
+                return;
             }
             
             // Check if user is in the same voice channel
             const member = interaction.member;
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-                return interaction.reply({ 
-                    embeds: [errorEmbed('You must be in the same voice channel to use these controls!')], 
-                    ephemeral: true 
-                });
+                try {
+                    await interaction.reply({ 
+                        content: 'You must be in the same voice channel to use these controls!',
+                        ephemeral: true 
+                    });
+                } catch (error) {
+                    console.error('Error replying to voice channel check:', error);
+                }
+                return;
             }
             
             try {
                 switch (interaction.customId) {
-                    case 'pause_resume':
-                    case 'pause':
-                        if (player.paused) {
+                    case 'resume':
+                        try {
                             player.pause(false);
                             await interaction.reply({ 
-                                embeds: [successEmbed(`Resumed playback`)],
+                                content: 'Resumed the playback!',
                                 ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send resume response:', error);
                             });
-                        } else {
+                        } catch (error) {
+                            console.error('Error in resume button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
+                        break;
+                        
+                    case 'replay':
+                        try {
+                            // Seek to position 0 (beginning of the track)
+                            await player.seek(0);
+                            await interaction.reply({ 
+                                content: 'Replaying current track from the beginning!',
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send replay response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in replay button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
+                        break;
+                        
+                    case 'pause_resume':
+                    case 'pause':
+                        try {
                             player.pause(true);
                             await interaction.reply({ 
-                                embeds: [successEmbed(`Paused playback`)],
+                                content: 'Paused the playback!',
                                 ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send pause response:', error);
                             });
+                        } catch (error) {
+                            console.error('Error in pause button:', error);
+                            // Don't attempt to reply if there's an error
                         }
                         break;
                         
                     case 'skip':
-                        player.skip();
-                        await interaction.reply({ 
-                            embeds: [successEmbed(`Skipped to the next track`)],
-                            ephemeral: true 
-                        });
+                        try {
+                            player.skip();
+                            await interaction.reply({ 
+                                content: 'Skipped to the next track!',
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send skip response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in skip button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
                         break;
                         
                     case 'stop':
-                        // Don't delete the nowplaying message when using the button
-                        // Only destroy the player
-                        player.destroy();
-                        await interaction.reply({ 
-                            embeds: [successEmbed(`Stopped playback and left the voice channel`)],
-                            ephemeral: true 
-                        });
+                        try {
+                            // Don't delete the nowplaying message when using the button
+                            // Only destroy the player
+                            player.destroy();
+                            await interaction.reply({ 
+                                content: 'Stopped playback and cleared the queue!',
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send stop response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in stop button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
                         break;
                         
                     case 'queue':
                         try {
-                            // We need to properly handle the queue button by creating an interaction
-                            // that the queue command can understand and use
-                            
-                            // First, get the queue command
-                            const queueCommand = client.commands.get('queue');
-                            if (!queueCommand) {
-                                return await interaction.reply({ 
-                                    embeds: [errorEmbed('Queue command not found!')],
-                                    ephemeral: true 
+                            // Instead of trying to reuse the queue command's implementation,
+                            // let's implement simplified queue info directly
+                            const queue = player.queue;
+                            if (!queue || queue.length === 0) {
+                                await interaction.reply({
+                                    content: 'There are no tracks in the queue',
+                                    ephemeral: true
+                                }).catch(error => {
+                                    console.error('Failed to send empty queue response:', error);
                                 });
+                                break;
                             }
                             
-                            // Create a modified interaction that mimics a slash command interaction
-                            // with the proper structure that the queue command expects
-                            const modifiedInteraction = {
-                                ...interaction,
-                                options: {
-                                    getInteger: (name) => name === 'page' ? 1 : null,
-                                },
-                                user: interaction.user,
-                                member: interaction.member,
-                                commandName: 'queue',
-                                guildId: interaction.guildId,
-                                guild: interaction.guild,
-                                client: client,
-                                reply: interaction.reply.bind(interaction),
-                                followUp: interaction.followUp.bind(interaction),
-                                editReply: interaction.editReply.bind(interaction)
-                            };
+                            // Create a simplified queue display
+                            let description = '';
+                            // Get up to 5 tracks to show
+                            const tracksToShow = Math.min(5, queue.length);
+                            for (let i = 0; i < tracksToShow; i++) {
+                                const track = queue[i];
+                                description += `**${i+1}.** ${track.title}\n`;
+                            }
                             
-                            // Execute the queue command with our modified interaction
-                            await queueCommand.execute(modifiedInteraction);
+                            if (queue.length > tracksToShow) {
+                                description += `\n... and ${queue.length - tracksToShow} more track(s)`;
+                            }
+                            
+                            await interaction.reply({
+                                content: `**Queue - ${queue.length} track(s)**\n\n${description}`,
+                                ephemeral: true
+                            }).catch(error => {
+                                console.error('Failed to send queue response:', error);
+                            });
                         } catch (error) {
                             console.error('Error handling queue button:', error);
-                            await interaction.reply({ 
-                                embeds: [errorEmbed(`Failed to show queue: ${error.message}`)],
-                                ephemeral: true 
-                            });
+                            // Don't attempt to reply if there's an error
                         }
                         break;
                         
                     case 'loop':
-                        // Handle loop mode cycling: none > track > queue > none
-                        // Kazagumo uses 'none', 'track', 'queue' as valid loop modes
-                        const loopModes = ['none', 'track', 'queue'];
-                        const currentMode = player.loop || 'none';
-                        const currentIndex = loopModes.indexOf(currentMode);
-                        const nextIndex = (currentIndex + 1) % loopModes.length;
-                        const nextMode = loopModes[nextIndex];
-                        
-                        player.setLoop(nextMode);
-                        
-                        const modeName = nextMode === 'none' ? 'Off' : 
-                                         nextMode === 'track' ? 'Current Track' : 
-                                         'Queue';
-                        
-                        await interaction.reply({ 
-                            embeds: [successEmbed(`Loop mode set to: ${modeName}`)],
-                            ephemeral: true 
-                        });
+                        try {
+                            // Handle loop mode cycling: none > track > queue > none
+                            // Kazagumo uses 'none', 'track', 'queue' as valid loop modes
+                            const loopModes = ['none', 'track', 'queue'];
+                            const currentMode = player.loop || 'none';
+                            const currentIndex = loopModes.indexOf(currentMode);
+                            const nextIndex = (currentIndex + 1) % loopModes.length;
+                            const nextMode = loopModes[nextIndex];
+                            
+                            player.setLoop(nextMode);
+                            
+                            // Friendly mode names for the message
+                            const modeNames = {
+                                'none': 'disabled',
+                                'track': 'current track',
+                                'queue': 'entire queue'
+                            };
+                            
+                            await interaction.reply({ 
+                                content: `Loop mode set to: ${modeNames[nextMode]}`,
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send loop response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in loop button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
                         break;
                         
                     case 'shuffle':
                         try {
                             if (player.queue.length < 2) {
-                                return interaction.reply({
-                                    embeds: [errorEmbed('Need at least 2 tracks in the queue to shuffle!')],
+                                await interaction.reply({
+                                    content: 'Need at least 2 tracks in the queue to shuffle!',
                                     ephemeral: true
+                                }).catch(error => {
+                                    console.error('Failed to send insufficient tracks message:', error);
+                                });
+                            } else {
+                                player.queue.shuffle();
+                                await interaction.reply({ 
+                                    content: 'Queue has been shuffled!',
+                                    ephemeral: true 
+                                }).catch(error => {
+                                    console.error('Failed to send shuffle success message:', error);
                                 });
                             }
+                        } catch (error) {
+                            console.error('Error in shuffle button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
+                        break;
+                        
+                    case 'volume_down':
+                        try {
+                            const currentVolume = player.volume;
+                            // Decrease by 10%, minimum volume is 0
+                            const newVolume = Math.max(0, currentVolume - 10);
+                            await player.setVolume(newVolume);
                             
-                            player.queue.shuffle();
+                            // Create a volume bar
+                            const volumeBar = createVolumeBar(newVolume);
                             
-                            await interaction.reply({
-                                embeds: [successEmbed(`Successfully shuffled ${player.queue.length} tracks in the queue`)],
-                                ephemeral: true
+                            await interaction.reply({ 
+                                content: `Volume set to ${newVolume}% ${volumeBar}`,
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send volume_down response:', error);
                             });
                         } catch (error) {
-                            console.error('Error shuffling queue:', error);
-                            await interaction.reply({
-                                embeds: [errorEmbed(`Failed to shuffle queue: ${error.message}`)],
-                                ephemeral: true
+                            console.error('Error in volume_down button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
+                        break;
+                        
+                    case 'volume_up':
+                        try {
+                            const currentVolume = player.volume;
+                            // Increase by 10%, maximum volume is 200
+                            const newVolume = Math.min(200, currentVolume + 10);
+                            await player.setVolume(newVolume);
+                            
+                            // Create a volume bar
+                            const volumeBar = createVolumeBar(newVolume);
+                            
+                            await interaction.reply({ 
+                                content: `Volume set to ${newVolume}% ${volumeBar}`,
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send volume_up response:', error);
                             });
+                        } catch (error) {
+                            console.error('Error in volume_up button:', error);
+                            // Don't attempt to reply if there's an error
                         }
                         break;
                         
                         
+                    case 'replay':
+                        try {
+                            // Get the current track
+                            const currentTrack = player.queue.current;
+                            if (!currentTrack) {
+                                await interaction.reply({
+                                    content: 'No track is currently playing!',
+                                    ephemeral: true
+                                }).catch(error => {
+                                    console.error('Failed to send no track response:', error);
+                                });
+                                break;
+                            }
+                            
+                            // Replay the current track by seeking to position 0
+                            await player.seek(0);
+                            
+                            await interaction.reply({
+                                content: `Replaying track: **${currentTrack.title}**`,
+                                ephemeral: true
+                            }).catch(error => {
+                                console.error('Failed to send replay response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in replay button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
+                        break;
+                        
                     default:
-                        await interaction.reply({ 
-                            embeds: [errorEmbed('Unknown button interaction')],
-                            ephemeral: true 
-                        });
+                        try {
+                            await interaction.reply({ 
+                                content: 'Unknown button action',
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send unknown button response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in default button case:', error);
+                            // Don't attempt to reply if there's an error
+                        }
                 }
             } catch (error) {
+                // Just log the error and don't try to respond to the interaction
+                // This avoids the most common issues with button interactions
                 console.error('Error handling button interaction:', error);
-                try {
-                    if (interaction.replied) {
-                        await interaction.followUp({ 
-                            embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
-                            ephemeral: true 
-                        }).catch(e => console.error('Could not follow up with button error:', e));
-                    } else if (interaction.deferred) {
-                        await interaction.editReply({ 
-                            embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
-                            ephemeral: true 
-                        }).catch(e => console.error('Could not edit reply with button error:', e));
-                    } else {
-                        await interaction.reply({ 
-                            embeds: [errorEmbed(`An error occurred: ${error.message || 'Unknown error'}`)],
-                            ephemeral: true 
-                        }).catch(e => console.error('Could not reply with button error:', e));
-                    }
-                } catch (responseError) {
-                    console.error('Failed to send button error response:', responseError);
-                }
+                // We don't attempt to reply to the interaction here to avoid additional errors
             }
         }
     },

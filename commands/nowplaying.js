@@ -86,6 +86,7 @@ module.exports = {
             description: isStream ? null : progressBar
         });
         
+        // Reply with just the embed and no buttons
         await interaction.reply({ embeds: [npEmbed] });
     },
 };

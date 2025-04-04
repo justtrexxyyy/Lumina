@@ -73,12 +73,6 @@ function createVolumeBar(volume) {
     const filledBars = Math.round((volume / 100) * barLength);
     const emptyBars = barLength - filledBars;
     
-    // Use text indicators instead of emojis
-    let volumeLabel;
-    if (volume === 0) volumeLabel = "MUTED";
-    else if (volume < 30) volumeLabel = "LOW";
-    else if (volume < 70) volumeLabel = "MID";
-    else volumeLabel = "HIGH";
-    
-    return `[${volumeLabel}] ${'▓'.repeat(filledBars)}${'░'.repeat(emptyBars)}`;
+    // Use original volume bar characters
+    return `[${volume}%] ${'▓'.repeat(filledBars)}${'░'.repeat(emptyBars)}`;
 }
