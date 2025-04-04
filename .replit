@@ -13,25 +13,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "music_bot_workflow"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "DiscordMusicBot"
-
-[[workflows.workflow]]
-name = "music_bot_workflow"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node test_image_card.js"
 
 [[workflows.workflow]]
 name = "DiscordMusicBot"

@@ -521,20 +521,64 @@ client.kazagumo.on('playerEmpty', async (player) => {
     if (client.twentyFourSeven.has(guildId)) return;
     
     if (channel) {
+        // Create an enhanced queue ended embed with more information and styling
         const queueEndEmbed = createEmbed({
-            title: 'Queue Ended',
-            description: '⏹️ The music queue has ended.',
+            title: 'Music Queue Ended',
+            description: 'The music player has finished playing all tracks in the queue.',
             fields: [
                 {
-                    name: 'Auto Leave',
-                    value: 'I will leave the voice channel in 1 minute unless new songs are added.',
+                    name: 'Session Stats',
+                    value: `Total Tracks Played: ${player.queue.previous ? player.queue.previous.length : 0}`,
+                    inline: true
+                },
+                {
+                    name: 'Auto Disconnect',
+                    value: 'The bot will automatically leave the voice channel in 1 minute unless new tracks are added.',
                     inline: false
+                },
+                {
+                    name: 'Add More Music',
+                    value: 'Use `/play` command to add more tracks to the queue.',
+                    inline: true
+                },
+                {
+                    name: '24/7 Mode',
+                    value: 'Use `/247` command to keep the bot in the voice channel indefinitely.',
+                    inline: true
                 }
             ],
-            color: '#ED4245'
+            thumbnail: config.botLogo || null,
+            color: '#ED4245',
+            footer: { text: `${client.user.username} • Advanced Music Bot` }
         });
         
-        channel.send({ embeds: [queueEndEmbed] }).catch(console.error);
+        // Create action row with buttons for quick actions
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        
+        const queueEndRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('help')
+                    .setLabel('Help')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('play')
+                    .setLabel('Play New Track')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('247toggle')
+                    .setLabel('Toggle 24/7 Mode')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('leave')
+                    .setLabel('Leave Now')
+                    .setStyle(ButtonStyle.Danger)
+            );
+        
+        channel.send({ 
+            embeds: [queueEndEmbed],
+            components: [queueEndRow]
+        }).catch(console.error);
         
         // Set a timeout to destroy the player if no new songs are added
         setTimeout(() => {
@@ -543,7 +587,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 currentPlayer.destroy();
                 const leaveEmbed = createEmbed({
                     title: 'Channel Left',
-                    description: '👋 Left voice channel due to inactivity.',
+                    description: 'Left voice channel due to inactivity.',
                     color: '#ED4245'
                 });
                 channel.send({ embeds: [leaveEmbed] }).catch(console.error);
@@ -676,127 +720,333 @@ client.kazagumo.on('playerError', (player, error) => {
 // Login to Discord
 // Add interactionCreate handler for buttons and filter buttons
 client.on('interactionCreate', async (interaction) => {
-    // Handle button interactions for filters
-    if (interaction.isButton() && interaction.customId.startsWith('filter_')) {
-        const filterName = interaction.customId.replace('filter_', '');
-        const guild = interaction.guild;
-        const member = interaction.member;
+    // Handle various button interactions
+    if (interaction.isButton()) {
+        // Handle queue end buttons
+        if (interaction.customId === 'help') {
+            const helpEmbed = createEmbed({
+                title: 'Bot Help',
+                description: 'Here are the main commands you can use:',
+                fields: [
+                    {
+                        name: '/play',
+                        value: 'Play a song from YouTube, Spotify, or other sources',
+                        inline: true
+                    },
+                    {
+                        name: '/queue',
+                        value: 'View the current queue',
+                        inline: true
+                    },
+                    {
+                        name: '/skip',
+                        value: 'Skip the current track',
+                        inline: true
+                    },
+                    {
+                        name: '/stop',
+                        value: 'Stop playback and clear queue',
+                        inline: true
+                    },
+                    {
+                        name: '/247',
+                        value: 'Toggle 24/7 mode',
+                        inline: true
+                    },
+                    {
+                        name: '/help',
+                        value: 'Show detailed help',
+                        inline: true
+                    }
+                ]
+            });
+            return interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+        }
         
-        // Get the player instance for this server
-        const player = client.kazagumo.players.get(guild.id);
-        
-        if (!player) {
+        if (interaction.customId === 'play') {
             return interaction.reply({ 
-                content: 'There is no active player in this server!', 
+                content: 'Please use the `/play` command followed by a song name or URL to add a track to the queue.', 
                 ephemeral: true 
             });
         }
         
-        // Check if user is in the same voice channel
-        if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-            return interaction.reply({ 
-                content: 'You must be in the same voice channel as the bot to use this!', 
-                ephemeral: true 
-            });
-        }
-        
-        try {
-            // Import filter utilities
-            const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
+        if (interaction.customId === '247toggle') {
+            const guild = interaction.guild;
+            const member = interaction.member;
             
-            // Handle 'none' selection (clear filters)
-            if (filterName === 'none') {
-                await clearFilters(player);
-                await interaction.reply({
-                    content: 'All filters have been cleared!',
-                    ephemeral: true
+            if (!member.voice.channel) {
+                return interaction.reply({ 
+                    content: 'You must be in a voice channel to toggle 24/7 mode!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Toggle 24/7 mode
+            if (client.twentyFourSeven.has(guild.id)) {
+                client.twentyFourSeven.delete(guild.id);
+                return interaction.reply({ 
+                    content: '24/7 mode has been disabled. I will disconnect after inactivity.', 
+                    ephemeral: true 
                 });
             } else {
-                // Apply the selected filter
-                const success = await applyFilter(player, filterName);
+                client.twentyFourSeven.set(guild.id, member.voice.channel.id);
+                return interaction.reply({ 
+                    content: '24/7 mode has been enabled. I will stay in the voice channel indefinitely.', 
+                    ephemeral: true 
+                });
+            }
+        }
+        
+        if (interaction.customId === 'leave') {
+            const guild = interaction.guild;
+            const player = client.kazagumo.players.get(guild.id);
+            
+            if (!player) {
+                return interaction.reply({ 
+                    content: 'I am not in a voice channel!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Force the player to disconnect
+            player.destroy();
+            return interaction.reply({ 
+                content: 'Left the voice channel.', 
+                ephemeral: true 
+            });
+        }
+        
+        // Handle media control buttons
+        if (['pause', 'skip', 'stop', 'queue', 'shuffle', 'loop'].includes(interaction.customId)) {
+            const guild = interaction.guild;
+            const member = interaction.member;
+            const player = client.kazagumo.players.get(guild.id);
+            
+            // Check if player exists
+            if (!player) {
+                return interaction.reply({ 
+                    content: 'There is no active player in this server!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Check if user is in the same voice channel
+            if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+                return interaction.reply({ 
+                    content: 'You must be in the same voice channel as the bot to use this!', 
+                    ephemeral: true 
+                });
+            }
+            
+            try {
+                switch (interaction.customId) {
+                    case 'pause':
+                        // Toggle pause state
+                        player.pause(!player.paused);
+                        return interaction.reply({ 
+                            content: player.paused ? 'Paused the playback!' : 'Resumed the playback!', 
+                            ephemeral: true 
+                        });
+                        
+                    case 'skip':
+                        // Skip current track
+                        if (player.queue.length === 0 && !player.queue.current) {
+                            return interaction.reply({ 
+                                content: 'There is nothing to skip!', 
+                                ephemeral: true 
+                            });
+                        }
+                        player.skip();
+                        return interaction.reply({ 
+                            content: 'Skipped to the next track!', 
+                            ephemeral: true 
+                        });
+                        
+                    case 'stop':
+                        // Stop playback and clear queue
+                        player.queue.clear();
+                        player.skip();
+                        return interaction.reply({ 
+                            content: 'Stopped the playback and cleared the queue!', 
+                            ephemeral: true 
+                        });
+                        
+                    case 'queue':
+                        // Show queue - find the queue command and execute it
+                        const queueCommand = client.commands.get('queue');
+                        if (queueCommand) {
+                            await queueCommand.execute(interaction);
+                        } else {
+                            return interaction.reply({ 
+                                content: 'Queue command not found! Please use /queue instead.', 
+                                ephemeral: true 
+                            });
+                        }
+                        break;
+                        
+                    case 'shuffle':
+                        // Shuffle the queue
+                        if (player.queue.length < 2) {
+                            return interaction.reply({ 
+                                content: 'Need at least 2 tracks in the queue to shuffle!', 
+                                ephemeral: true 
+                            });
+                        }
+                        player.queue.shuffle();
+                        return interaction.reply({ 
+                            content: 'Shuffled the queue!', 
+                            ephemeral: true 
+                        });
+                        
+                    case 'loop':
+                        // Toggle loop mode
+                        const modes = ['none', 'track', 'queue'];
+                        const currentIndex = modes.indexOf(player.loop);
+                        const nextIndex = (currentIndex + 1) % modes.length;
+                        player.setLoop(modes[nextIndex]);
+                        
+                        const modeMessages = {
+                            'none': 'Loop mode disabled!',
+                            'track': 'Now looping the current track!',
+                            'queue': 'Now looping the entire queue!'
+                        };
+                        
+                        return interaction.reply({ 
+                            content: modeMessages[modes[nextIndex]], 
+                            ephemeral: true 
+                        });
+                }
+            } catch (error) {
+                console.error('Error handling media control button:', error);
+                return interaction.reply({ 
+                    content: 'An error occurred while processing your request.', 
+                    ephemeral: true 
+                });
+            }
+        }
+        
+        // Handle filter button interactions
+        if (interaction.customId.startsWith('filter_')) {
+            const filterName = interaction.customId.replace('filter_', '');
+            const guild = interaction.guild;
+            const member = interaction.member;
+            
+            // Get the player instance for this server
+            const player = client.kazagumo.players.get(guild.id);
+            
+            if (!player) {
+                return interaction.reply({ 
+                    content: 'There is no active player in this server!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Check if user is in the same voice channel
+            if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+                return interaction.reply({ 
+                    content: 'You must be in the same voice channel as the bot to use this!', 
+                    ephemeral: true 
+                });
+            }
+            
+            try {
+                // Import filter utilities
+                const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
                 
-                if (success) {
+                // Handle 'none' selection (clear filters)
+                if (filterName === 'none') {
+                    await clearFilters(player);
                     await interaction.reply({
-                        content: `Applied the ${getFilterDisplayName(filterName)} filter!`,
+                        content: 'All filters have been cleared!',
                         ephemeral: true
                     });
                 } else {
-                    await interaction.reply({
-                        content: `Failed to apply the filter. Please try again.`,
-                        ephemeral: true
-                    });
+                    // Apply the selected filter
+                    const success = await applyFilter(player, filterName);
+                    
+                    if (success) {
+                        await interaction.reply({
+                            content: `Applied the ${getFilterDisplayName(filterName)} filter!`,
+                            ephemeral: true
+                        });
+                    } else {
+                        await interaction.reply({
+                            content: `Failed to apply the filter. Please try again.`,
+                            ephemeral: true
+                        });
+                    }
                 }
-            }
-        } catch (error) {
-            console.error('Error applying filter:', error);
-            await interaction.reply({
-                content: 'An error occurred while applying the filter.',
-                ephemeral: true
-            });
-        }
-        return;
-    }
-
-    // Only handle StringSelectMenu interactions if not a button
-    if (!interaction.isStringSelectMenu()) return;
-    
-    // Handle filter select menu (legacy support)
-    if (interaction.customId === 'filter_select') {
-        const selectedFilter = interaction.values[0];
-        const guild = interaction.guild;
-        const member = interaction.member;
-        
-        // Get the player instance for this server
-        const player = client.kazagumo.players.get(guild.id);
-        
-        if (!player) {
-            return interaction.reply({ 
-                content: 'There is no active player in this server!', 
-                ephemeral: true 
-            });
-        }
-        
-        // Check if user is in the same voice channel
-        if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-            return interaction.reply({ 
-                content: 'You must be in the same voice channel as the bot to use this!', 
-                ephemeral: true 
-            });
-        }
-        
-        try {
-            // Import filter utilities
-            const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
-            
-            // Handle 'none' selection (clear filters)
-            if (selectedFilter === 'none') {
-                await clearFilters(player);
+            } catch (error) {
+                console.error('Error applying filter:', error);
                 await interaction.reply({
-                    content: 'All filters have been cleared!',
+                    content: 'An error occurred while applying the filter.',
                     ephemeral: true
                 });
-            } else {
-                // Apply the selected filter
-                const success = await applyFilter(player, selectedFilter);
+            }
+            return;
+        }
+    } else {
+        // Only handle StringSelectMenu interactions if not a button
+        if (!interaction.isStringSelectMenu()) return;
+        
+        // Handle filter select menu (legacy support)
+        if (interaction.customId === 'filter_select') {
+            const selectedFilter = interaction.values[0];
+            const guild = interaction.guild;
+            const member = interaction.member;
+            
+            // Get the player instance for this server
+            const player = client.kazagumo.players.get(guild.id);
+            
+            if (!player) {
+                return interaction.reply({ 
+                    content: 'There is no active player in this server!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Check if user is in the same voice channel
+            if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+                return interaction.reply({ 
+                    content: 'You must be in the same voice channel as the bot to use this!', 
+                    ephemeral: true 
+                });
+            }
+            
+            try {
+                // Import filter utilities
+                const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
                 
-                if (success) {
+                // Handle 'none' selection (clear filters)
+                if (selectedFilter === 'none') {
+                    await clearFilters(player);
                     await interaction.reply({
-                        content: `Applied the ${getFilterDisplayName(selectedFilter)} filter!`,
+                        content: 'All filters have been cleared!',
                         ephemeral: true
                     });
                 } else {
-                    await interaction.reply({
-                        content: `Failed to apply the filter. Please try again.`,
-                        ephemeral: true
-                    });
+                    // Apply the selected filter
+                    const success = await applyFilter(player, selectedFilter);
+                    
+                    if (success) {
+                        await interaction.reply({
+                            content: `Applied the ${getFilterDisplayName(selectedFilter)} filter!`,
+                            ephemeral: true
+                        });
+                    } else {
+                        await interaction.reply({
+                            content: `Failed to apply the filter. Please try again.`,
+                            ephemeral: true
+                        });
+                    }
                 }
+            } catch (error) {
+                console.error('Error applying filter:', error);
+                await interaction.reply({
+                    content: 'An error occurred while applying the filter.',
+                    ephemeral: true
+                });
             }
-        } catch (error) {
-            console.error('Error applying filter:', error);
-            await interaction.reply({
-                content: 'An error occurred while applying the filter.',
-                ephemeral: true
-            });
         }
     }
 });
