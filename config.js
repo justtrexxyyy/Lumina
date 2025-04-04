@@ -31,9 +31,11 @@ module.exports = {
         nodes: [
             {
                 name: 'Main',
-                url: 'lavalink.devamop.in:443',
-                auth: 'DevamOP',
-                secure: true
+                url: 'lavalink.lexnet.cc:443',
+                auth: 'lexnet',
+                secure: true,
+                retryAmount: 5,
+                retryDelay: 3000
             }
         ]
     }

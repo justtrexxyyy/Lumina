@@ -74,6 +74,13 @@ for (const file of eventFiles) {
 
 // Shoukaku events
 shoukaku.on('ready', (name) => console.log(`Lavalink ${name}: Ready!`));
+shoukaku.on('close', (name, code, reason) => console.warn(`Lavalink ${name}: Closed, Code ${code}, Reason ${reason || 'No reason'}`));
+shoukaku.on('debug', (name, info) => console.debug(`Lavalink ${name}: Debug,`, info));
+shoukaku.on('disconnect', (name, players, moved) => {
+    if (moved) return;
+    players.map(player => player.connection.disconnect());
+    console.warn(`Lavalink ${name}: Disconnected`);
+});
 shoukaku.on('error', (name, error) => {
     console.error(`Lavalink ${name}: Error Caught,`, error);
     // Attempt to reconnect or handle the error
