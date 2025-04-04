@@ -1,9 +1,9 @@
 
 module.exports = {
-    botName: 'Music Bot',
+    botName: 'Audic',
     embedColor: '#7289DA',
-    supportServer: 'https://discord.gg/your-server',
-    botLogo: 'https://i.imgur.com/your-logo.png',
+    supportServer: 'https://discord.gg/76W85cu3Uy',
+    botLogo: '',
     emojis: {
         play: '▶️',
         pause: '⏸️',
@@ -31,8 +31,8 @@ module.exports = {
         nodes: [
             {
                 name: 'Main',
-                url: 'lavalink.lexnet.cc:443',
-                auth: 'lexnet',
+                url: 'lava-v4.ajieblogs.eu.org:80',
+                auth: 'https://dsc.gg/ajidevserver',
                 secure: true,
                 retryAmount: 5,
                 retryDelay: 3000
