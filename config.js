@@ -31,9 +31,9 @@ module.exports = {
         nodes: [
             {
                 name: 'Main',
-                url: 'lavalink.devamop.in:443',
-                auth: 'DevamOP',
-                secure: true,
+                url: 'lavalink.jirayu.net:13592',
+                auth: 'youshallnotpass',
+                secure: false,
                 retryAmount: 5,
                 retryDelay: 3000
             }
