@@ -31,8 +31,8 @@ module.exports = {
         nodes: [
             {
                 name: 'Main',
-                url: 'lava-v4.ajieblogs.eu.org:443',
-                auth: 'youshallnotpass',
+                url: 'lavalink.devamop.in:443',
+                auth: 'DevamOP',
                 secure: true
             }
         ]
