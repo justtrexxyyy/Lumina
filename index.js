@@ -422,22 +422,30 @@ client.kazagumo.on('playerEmpty', async (player) => {
     }
     
     // Autoplay functionality
-    if (client.autoplay && client.autoplay.has(guildId) && player.queue.previous && player.queue.previous.length > 0) {
+    if (client.autoplay && client.autoplay.has(guildId) && player.queue.previous) {
         try {
-            // Get the last played track
-            const lastTrack = player.queue.previous[player.queue.previous.length - 1];
-            if (!lastTrack) return;
+            // Get a random genre/mood to search for completely different tracks
+            const genres = ['pop', 'rock', 'hip hop', 'dance', 'electronic', 'chill', 'top hits', 'popular', 'trending', 'new music', 'music mix'];
+            const randomGenre = genres[Math.floor(Math.random() * genres.length)];
             
-            // Search for related tracks on YouTube Music
-            const result = await client.kazagumo.search(lastTrack.title || lastTrack.uri, {
+            // Get the last played track (just for the requester)
+            const lastTrack = player.queue.previous.length > 0 ? 
+                player.queue.previous[player.queue.previous.length - 1] : null;
+            
+            const requester = lastTrack ? lastTrack.requester : null;
+            
+            // Search for completely new tracks on YouTube Music using a random genre
+            const result = await client.kazagumo.search(randomGenre, {
                 engine: 'youtube_music', // Use YouTube Music for autoplay
-                requester: lastTrack.requester
+                requester: requester
             });
             
             if (result && result.tracks.length > 0) {
-                // Add ALL recommended tracks from YouTube Music
-                // No filtering - play everything that YouTube Music recommends
-                const tracksToAdd = result.tracks.slice(0, 5); // Add up to 5 recommended tracks
+                // Mix up the results to get more variety
+                const shuffledTracks = result.tracks.sort(() => Math.random() - 0.5);
+                
+                // Get completely different tracks - take 5 random ones 
+                const tracksToAdd = shuffledTracks.slice(0, 5);
                 player.queue.add(tracksToAdd);
                 
                 // Start playing if not already playing
