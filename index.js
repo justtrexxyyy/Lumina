@@ -360,6 +360,27 @@ client.kazagumo.on('playerEmpty', async (player) => {
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
     
+    // First, remove components from the now playing message if it exists
+    try {
+        const messageInfo = client.nowPlayingMessages.get(guildId);
+        if (messageInfo) {
+            const messageChannel = client.channels.cache.get(messageInfo.channelId);
+            if (messageChannel) {
+                try {
+                    const message = await messageChannel.messages.fetch(messageInfo.messageId);
+                    if (message && message.editable) {
+                        // Remove all components (buttons)
+                        await message.edit({ components: [] }).catch(() => {});
+                    }
+                } catch (fetchError) {
+                    // Silent catch - no need to log
+                }
+            }
+        }
+    } catch (error) {
+        // Silent catch - no need to log
+    }
+    
     // When player is empty, send a message with working buttons to inform users
     if (channel) {
         // Create buttons that work even with no active player
@@ -386,7 +407,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 components: [actionRow]
             });
         } catch (error) {
-            console.error('Error sending queue ended message:', error);
+            // Silent catch - no need to log
         }
     }
     
