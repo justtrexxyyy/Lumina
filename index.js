@@ -35,6 +35,7 @@ const client = new Client({
 client.commands = new Collection();
 client.twentyFourSeven = new Collection();
 client.nowPlayingMessages = new Map(); // Map to store Now Playing messages (guildId -> messageId)
+client.inactivityTimeouts = new Map(); // Map to store inactivity timeouts for each guild
 
 // Initialize Shoukaku and Kazagumo with more robust error handling
 const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.nodes, {
@@ -181,6 +182,12 @@ client.kazagumo.on('playerEnd', async (player) => {
 });
 
 client.kazagumo.on('playerStart', async (player, track) => {
+    // Clear any inactivity timeout when playback starts
+    if (client.inactivityTimeouts && client.inactivityTimeouts.has(player.guildId)) {
+        clearTimeout(client.inactivityTimeouts.get(player.guildId));
+        client.inactivityTimeouts.delete(player.guildId);
+    }
+
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
         try {
@@ -529,19 +536,28 @@ client.kazagumo.on('playerEmpty', async (player) => {
             components: [queueEndRow]
         }).catch(console.error);
         
-        // Set a timeout to destroy the player if no new songs are added
-        setTimeout(() => {
+        // Set a timeout to destroy the player if no new songs are added AND the player is still empty
+        const inactivityTimeout = setTimeout(() => {
             const currentPlayer = client.kazagumo.players.get(guildId);
-            if (currentPlayer && currentPlayer.queue.isEmpty && !client.twentyFourSeven.has(guildId)) {
+            // Only destroy if: player exists, queue is empty, player is not playing, and 24/7 mode is off
+            if (currentPlayer && 
+                (!currentPlayer.queue.current || currentPlayer.queue.isEmpty) && 
+                !currentPlayer.playing && 
+                !client.twentyFourSeven.has(guildId)) {
+                
                 currentPlayer.destroy();
                 const leaveEmbed = createEmbed({
                     title: 'Channel Left',
                     description: 'Left voice channel due to inactivity.',
                     color: '#ED4245'
                 });
-                channel.send({ embeds: [leaveEmbed] }).catch(console.error);
+                channel.send({ embeds: [leaveEmbed] }).catch(() => {});
             }
-        }, 60000);
+        }, 180000); // Extended to 3 minutes for better user experience
+        
+        // Store the timeout so we can clear it if playback resumes
+        if (!client.inactivityTimeouts) client.inactivityTimeouts = new Map();
+        client.inactivityTimeouts.set(guildId, inactivityTimeout);
     }
 });
 
