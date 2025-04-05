@@ -16,7 +16,9 @@ module.exports = {
                 text: options.footer
             } : null,
             thumbnail: options.thumbnail ? {
-                url: options.thumbnail
+                url: options.thumbnail,
+                width: 120,
+                height: 120
             } : null,
             image: options.image ? {
                 url: options.image
