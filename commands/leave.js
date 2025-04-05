@@ -38,13 +38,26 @@ module.exports = {
                 });
             }
             
+            // Check if 24/7 mode is enabled and disable it
+            const was247Enabled = client.twentyFourSeven.has(guildId);
+            if (was247Enabled) {
+                client.twentyFourSeven.delete(guildId);
+            }
+            
             // Destroy the player (clears queue and disconnects)
             await player.destroy();
             
-            // Create success message
+            // Create success message with 24/7 mode notification
+            let description = `I've left <#${member.voice.channelId}> and cleared the queue.`;
+            
+            // Add 24/7 mode notification if it was active
+            if (was247Enabled) {
+                description += '\n24/7 mode has been disabled.';
+            }
+            
             const leaveEmbed = createEmbed({
                 title: `Left Voice Channel`,
-                description: `I've left <#${member.voice.channelId}> and cleared the queue.`,
+                description: description,
                 color: config.embedColor,
                 footer: `Requested by ${interaction.user.tag}`,
                 timestamp: true

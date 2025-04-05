@@ -92,8 +92,8 @@ module.exports = {
             // Add each track as an option
             tracks.forEach((track, index) => {
                 selectMenu.addOptions({
-                    label: `${index + 1}. ${track.title.substring(0, 80)}${track.title.length > 80 ? '...' : ''}`,
-                    description: `Track ${index + 1}`,
+                    label: `${track.title.substring(0, 90)}${track.title.length > 90 ? '...' : ''}`,
+                    description: ``,
                     value: index.toString()
                 });
             });
