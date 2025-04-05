@@ -388,7 +388,38 @@ client.kazagumo.on('playerEmpty', async (player) => {
         // Silent catch - no need to log
     }
     
-    // We removed the queue ended message to simplify the UI
+    // When player is empty, send a message with working buttons to inform users
+    if (channel) {
+        // Create buttons that work even with no active player
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        const actionRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('play')
+                    .setLabel('Play Music')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('leave')
+                    .setLabel('Leave Channel')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+            
+        // Send a simple queue ended message with buttons
+        try {
+            const { createEmbed } = require('./utils/embeds');
+            const queueEndedEmbed = createEmbed({
+                title: 'Queue Ended',
+                description: 'Use the buttons below or type `/play` to play more music!'
+            });
+            
+            await channel.send({
+                embeds: [queueEndedEmbed],
+                components: [actionRow]
+            });
+        } catch (error) {
+            // Silent catch - no need to log
+        }
+    }
     
     // Autoplay functionality
     if (client.autoplay && client.autoplay.has(guildId) && player.queue.previous && player.queue.previous.length > 0) {

@@ -19,8 +19,14 @@ module.exports = {
         const { createEmbed } = require('./embeds');
         
         // Process YouTube Music thumbnail to be smaller, more like SoundCloud size
-        // YouTube thumbnails are typically large, this ensures a more compact mobile-friendly size
+        // Modify the thumbnail URL to get a smaller version (120x120 like SoundCloud)
         let thumbnail = track.thumbnail;
+        
+        // For YouTube thumbnails, modify to get a smaller version
+        if (thumbnail && thumbnail.includes('youtube.com')) {
+            // Get the highest quality small thumbnail (120x90)
+            thumbnail = thumbnail.replace(/maxresdefault|hqdefault|mqdefault|sddefault/, 'default');
+        }
         
         // Use a cleaner embed optimized for mobile viewing with SoundCloud-like thumbnail size
         return createEmbed({
