@@ -56,8 +56,9 @@ module.exports = {
             }
         }
         
-        // Handle button interactions
-        if (interaction.isButton()) {
+        // Button interactions are now handled in index.js
+        // This handler is disabled to prevent conflicts
+        if (false && interaction.isButton()) {
             const { client, guild } = interaction;
             const player = client.kazagumo.players.get(guild.id);
             
@@ -89,17 +90,20 @@ module.exports = {
             
             try {
                 switch (interaction.customId) {
-                    case 'resume':
+                    case 'pauseresume':
                         try {
-                            player.pause(false);
+                            // Toggle between pause and resume
+                            const isPaused = player.paused;
+                            player.pause(!isPaused);
+                            
                             await interaction.reply({ 
-                                content: 'Resumed the playback!',
+                                content: isPaused ? 'Resumed the playback!' : 'Paused the playback!',
                                 ephemeral: true 
                             }).catch(error => {
-                                console.error('Failed to send resume response:', error);
+                                console.error('Failed to send pause/resume response:', error);
                             });
                         } catch (error) {
-                            console.error('Error in resume button:', error);
+                            console.error('Error in pause/resume button:', error);
                             // Don't attempt to reply if there's an error
                         }
                         break;
@@ -120,7 +124,7 @@ module.exports = {
                         }
                         break;
                         
-                    case 'pause_resume':
+                    // Keep these for backward compatibility with any old messages
                     case 'pause':
                         try {
                             player.pause(true);
@@ -132,6 +136,21 @@ module.exports = {
                             });
                         } catch (error) {
                             console.error('Error in pause button:', error);
+                            // Don't attempt to reply if there's an error
+                        }
+                        break;
+                        
+                    case 'resume':
+                        try {
+                            player.pause(false);
+                            await interaction.reply({ 
+                                content: 'Resumed the playback!',
+                                ephemeral: true 
+                            }).catch(error => {
+                                console.error('Failed to send resume response:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error in resume button:', error);
                             // Don't attempt to reply if there's an error
                         }
                         break;
@@ -349,6 +368,98 @@ module.exports = {
                             console.error('Error in default button case:', error);
                             // Don't attempt to reply if there's an error
                         }
+                        break;
+                        
+                    // Handlers for queue ended buttons
+                    case 'play_again':
+                    case 'play':
+                        try {
+                            // Respond with a message directing the user to use the /play command
+                            await interaction.reply({
+                                content: 'Please use the `/play` command to search for and play music!',
+                                ephemeral: true
+                            });
+                        } catch (error) {
+                            console.error('Error in play_again button:', error);
+                        }
+                        break;
+                        
+                    case 'leave':
+                        try {
+                            // Check if there's still an active player
+                            const player = client.kazagumo.players.get(guild.id);
+                            if (player) {
+                                player.destroy();
+                                await interaction.reply({
+                                    content: 'Left the voice channel and cleared the queue!',
+                                    ephemeral: true
+                                });
+                            } else {
+                                // No player, so just send a message
+                                await interaction.reply({
+                                    content: 'I\'m not currently in a voice channel.',
+                                    ephemeral: true
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error in leave button:', error);
+                        }
+                        break;
+                        
+                    case '247toggle':
+                        try {
+                            // Toggle 24/7 mode
+                            if (!client.twentyFourSeven) {
+                                client.twentyFourSeven = new Set();
+                            }
+                            
+                            const guildId = guild.id;
+                            const has247 = client.twentyFourSeven.has(guildId);
+                            
+                            if (has247) {
+                                client.twentyFourSeven.delete(guildId);
+                                await interaction.reply({
+                                    content: '24/7 mode disabled. I will leave the voice channel when the queue ends.',
+                                    ephemeral: true
+                                });
+                            } else {
+                                client.twentyFourSeven.add(guildId);
+                                await interaction.reply({
+                                    content: '24/7 mode enabled. I will stay in the voice channel even when the queue ends.',
+                                    ephemeral: true
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error in 247toggle button:', error);
+                        }
+                        break;
+                    
+                    case 'help':
+                        try {
+                            // Send a simple help message with common commands
+                            const helpEmbed = createEmbed({
+                                title: 'Quick Help Guide',
+                                description: 'Here are some common commands to get you started:',
+                                fields: [
+                                    {
+                                        name: '🎵 Music Commands',
+                                        value: '`/play` - Play a song or playlist\n`/search` - Search for songs\n`/queue` - View the current queue\n`/skip` - Skip to the next song\n`/volume` - Adjust the volume'
+                                    },
+                                    {
+                                        name: '⚙️ Settings',
+                                        value: '`/247` - Toggle 24/7 mode\n`/loop` - Set loop mode\n`/autoplay` - Toggle autoplay'
+                                    }
+                                ]
+                            });
+                            
+                            await interaction.reply({
+                                embeds: [helpEmbed],
+                                ephemeral: true
+                            });
+                        } catch (error) {
+                            console.error('Error in help button:', error);
+                        }
+                        break;
                 }
             } catch (error) {
                 // Just log the error and don't try to respond to the interaction

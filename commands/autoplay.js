@@ -50,9 +50,7 @@ module.exports = {
                 
                 const disabledEmbed = createEmbed({
                     title: `Autoplay Disabled`,
-                    description: `Autoplay mode has been **disabled**. I will no longer automatically add related tracks when the queue ends.`,
-                    footer: `Requested by ${interaction.user.tag}`,
-                    timestamp: true
+                    description: `Autoplay mode has been **disabled**.`
                 });
                 
                 await interaction.reply({ embeds: [disabledEmbed] });
@@ -62,9 +60,7 @@ module.exports = {
                 
                 const enabledEmbed = createEmbed({
                     title: `Autoplay Enabled`,
-                    description: `Autoplay mode has been **enabled**. I will automatically add related tracks when the queue ends.`,
-                    footer: `Requested by ${interaction.user.tag}`,
-                    timestamp: true
+                    description: `Autoplay mode has been **enabled**.`
                 });
                 
                 await interaction.reply({ embeds: [enabledEmbed] });

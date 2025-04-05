@@ -8,6 +8,21 @@ const config = require('./config');
 const { formatDuration } = require('./utils/formatters');
 const { createEmbed } = require('./utils/embeds');
 
+// Add startup debugging logs
+console.log('Starting Discord Music Bot...');
+console.log('Environment variables present:');
+console.log('DISCORD_TOKEN exists:', !!process.env.DISCORD_TOKEN);
+console.log('DISCORD_TOKEN length:', process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.length : 0);
+console.log('CLIENT_ID exists:', !!process.env.CLIENT_ID);
+console.log('CLIENT_ID length:', process.env.CLIENT_ID ? process.env.CLIENT_ID.length : 0);
+console.log('LAVALINK_HOST:', process.env.LAVALINK_HOST);
+console.log('LAVALINK_PORT:', process.env.LAVALINK_PORT);
+
+// Set timeout to detect if login takes too long
+setTimeout(() => {
+    console.log('Login is taking longer than expected (10 seconds)...');
+}, 10000);
+
 // Create client instance with required intents
 const client = new Client({
     intents: [
@@ -37,7 +52,11 @@ const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.
 });
 
 client.kazagumo = new Kazagumo({
-    defaultSearchEngine: 'youtube',
+    defaultSearchEngine: 'youtube', // Keep YouTube as default but we'll add support for SoundCloud
+    sources: {
+        youtube: true,   // Enable YouTube source
+        soundcloud: true // Enable SoundCloud source
+    },
     send: (guildId, payload) => {
         const guild = client.guilds.cache.get(guildId);
         if (guild) guild.shard.send(payload);
@@ -147,7 +166,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const embed = createEmbed({
                 title: 'Now Playing',
                 thumbnail: track.thumbnail || null,
-                description: `**[${track.title}](${track.uri || config.supportServer})**\n${track.author || 'Unknown'} • ${track.isStream ? 'LIVE' : formatDuration(track.length)} • <@${track.requester.id}>`
+                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author || 'Unknown'} • ${track.isStream ? 'LIVE' : formatDuration(track.length)} • <@${track.requester.id}>`
             });
             
             // Add buttons and filter select menu for now playing message
@@ -157,13 +176,9 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const nowPlayingRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('pause')
-                        .setLabel('Pause')
+                        .setCustomId('pauseresume')
+                        .setLabel('Pause/Resume')
                         .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('resume')
-                        .setLabel('Resume')
-                        .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
                         .setCustomId('replay')
                         .setLabel('Replay')
@@ -256,12 +271,12 @@ client.kazagumo.on('playerStart', async (player, track) => {
             // Simple fallback embed
             const embed = createEmbed({
                 title: `Now Playing`,
-                description: `[${track.title}](${config.supportServer})`,
+                description: `[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})`,
                 footer: 'Error occurred while creating the full embed'
             });
             
             // Create a simplified dropdown for fallback
-            const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+            const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
             
             const fallbackFilterMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
@@ -291,10 +306,23 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 
             const fallbackFilterRow = new ActionRowBuilder()
                 .addComponents(fallbackFilterMenu);
+
+            // Add a basic controls row as well for fallback
+            const fallbackControlsRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('pauseresume')
+                        .setLabel('Pause/Resume')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('skip')
+                        .setLabel('Skip')
+                        .setStyle(ButtonStyle.Secondary)
+                );
                 
             channel.send({ 
                 embeds: [embed],
-                components: [fallbackFilterRow]
+                components: [fallbackFilterRow, fallbackControlsRow]
             }).then(message => {
                 // Store the message ID in the map
                 client.nowPlayingMessages.set(player.guildId, { 
@@ -310,9 +338,35 @@ client.kazagumo.on('playerEmpty', async (player) => {
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
     
-    // No longer deleting the "Now Playing" message when player is empty
-    // This allows users to see what was playing even after it's stopped
-    // The message will be replaced when a new track starts playing
+    // When player is empty, send a message with working buttons to inform users
+    if (channel) {
+        // Create buttons that work even with no active player
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        const actionRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('play')
+                    .setLabel('Play Music')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('leave')
+                    .setLabel('Leave Channel')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+            
+        // Send a queue ended message with buttons
+        try {
+            await channel.send({
+                embeds: [createEmbed({
+                    title: 'Queue Ended',
+                    description: 'The music queue has ended.\nUse the buttons below or type `/play` to play more music!'
+                })],
+                components: [actionRow]
+            });
+        } catch (error) {
+            console.error('Error sending queue ended message:', error);
+        }
+    }
     
     // Initialize autoplay set if it doesn't exist
     if (!client.autoplay) {
@@ -335,16 +389,20 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 } else {
                     // If no track info available, inform the user and exit
                     if (channel) {
-                        channel.send({ content: `**Autoplay**: Cannot find any track information to use as reference.` }).catch(console.error);
+                        channel.send({ 
+                            embeds: [createEmbed({
+                                title: '❌ Autoplay: No Reference Track',
+                                description: 'Cannot find any track information to use as reference for autoplay.',
+                                color: '#ED4245',
+                                footer: 'Play a track first to enable autoplay suggestions'
+                            })]
+                        }).catch(console.error);
                     }
                     return;
                 }
             }
             
-            // Send a message that we're searching for similar tracks
-            if (channel) {
-                channel.send({ content: `**Autoplay**: Finding music similar to **${lastTrack.title}**...` }).catch(console.error);
-            }
+            // No need to send a searching message as requested
             
             // Determine search query - prefer URI, fall back to title+author
             let searchQuery;
@@ -408,7 +466,9 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     if (!randomTrack || typeof randomTrack !== 'object') {
                         console.error(`Autoplay: Selected track at index ${randomIndex} is undefined or not an object`);
                         if (channel) {
-                            channel.send({ content: `**Autoplay Error**: Invalid track data returned from search.` }).catch(console.error);
+                            channel.send({ 
+                                embeds: [errorEmbed('Invalid track data returned from search.')]
+                            }).catch(console.error);
                         }
                         return;
                     }
@@ -428,38 +488,52 @@ client.kazagumo.on('playerEmpty', async (player) => {
                                 await player.play();
                             } catch (e) {
                                 if (channel) {
-                                    channel.send({ content: `**Autoplay Error**: Failed to play the next track: ${e.message}` }).catch(console.error);
+                                    channel.send({ 
+                                        embeds: [errorEmbed(`Failed to play the next track: ${e.message}`)]
+                                    }).catch(console.error);
                                 }
                             }
                         }
                         
-                        // Send a message about the autoplay track
+                        // Send a simplified embed about the autoplay track
                         if (channel) {
-                            // Changed from "Added to queue" style messaging to make it clear this is autoplay
-                            channel.send({ content: `**Autoplay**: Selected next track: **${randomTrack.title}**` }).catch(console.error);
+                            channel.send({ 
+                                embeds: [createEmbed({
+                                    title: 'Added Track to Queue',
+                                    description: `**${randomTrack.title}**\nby **${randomTrack.author || 'Unknown Artist'}**`
+                                })]
+                            }).catch(console.error);
                         }
                         
                         // Don't proceed with the disconnect logic since we have autoplay
                         return;
                     } catch (playError) {
                         if (channel) {
-                            channel.send({ content: `**Autoplay Error**: ${playError.message}` }).catch(console.error);
+                            channel.send({ 
+                                embeds: [errorEmbed(`${playError.message}`)]
+                            }).catch(console.error);
                         }
                     }
                 } else {
                     if (channel) {
-                        channel.send({ content: `**Autoplay**: Couldn't find any suitable related tracks to play.` }).catch(console.error);
+                        channel.send({ 
+                            embeds: [errorEmbed(`Couldn't find any suitable related tracks to play.`)]
+                        }).catch(console.error);
                     }
                 }
             } else {
                 if (channel) {
-                    channel.send({ content: `**Autoplay**: Couldn't find any related tracks.` }).catch(console.error);
+                    channel.send({ 
+                        embeds: [errorEmbed(`Couldn't find any related tracks for autoplay.`)]
+                    }).catch(console.error);
                 }
             }
         } catch (error) {
             console.error('Autoplay Error:', error);
             if (channel) {
-                channel.send({ content: `**Autoplay Error**: An unexpected error occurred.` }).catch(console.error);
+                channel.send({ 
+                    embeds: [errorEmbed('An unexpected error occurred while trying to use autoplay.')]
+                }).catch(console.error);
             }
         }
     }
@@ -764,7 +838,7 @@ client.on('interactionCreate', async (interaction) => {
         }
         
         // Handle media control buttons
-        if (['pause', 'skip', 'stop', 'queue', 'shuffle', 'loop'].includes(interaction.customId)) {
+        if (['pauseresume', 'pause', 'resume', 'skip', 'stop', 'queue', 'shuffle', 'loop', 'replay'].includes(interaction.customId)) {
             const guild = interaction.guild;
             const member = interaction.member;
             const player = client.kazagumo.players.get(guild.id);
@@ -787,11 +861,20 @@ client.on('interactionCreate', async (interaction) => {
             
             try {
                 switch (interaction.customId) {
+                    case 'pauseresume':
                     case 'pause':
                         // Toggle pause state
                         player.pause(!player.paused);
                         return interaction.reply({ 
                             content: player.paused ? 'Paused the playback!' : 'Resumed the playback!', 
+                            ephemeral: true 
+                        });
+                        
+                    case 'resume':
+                        // Resume playback
+                        player.pause(false);
+                        return interaction.reply({ 
+                            content: 'Resumed the playback!', 
                             ephemeral: true 
                         });
                         
@@ -860,6 +943,27 @@ client.on('interactionCreate', async (interaction) => {
                         
                         return interaction.reply({ 
                             content: modeMessages[modes[nextIndex]], 
+                            ephemeral: true 
+                        });
+                        
+                    case 'replay':
+                        // Replay the current track
+                        if (!player.queue.current) {
+                            return interaction.reply({ 
+                                content: 'There is no track currently playing!', 
+                                ephemeral: true 
+                            });
+                        }
+                        
+                        // Record the current track to replay it
+                        const currentTrack = player.queue.current;
+                        
+                        // Skip the current track and immediately add it back to the beginning of the queue
+                        player.queue.unshift(currentTrack);
+                        player.skip();
+                        
+                        return interaction.reply({ 
+                            content: 'Replaying the current track!', 
                             ephemeral: true 
                         });
                 }
@@ -998,4 +1102,33 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN).catch(console.error);
+// Add more detailed error handling for login
+console.log('Attempting to log in to Discord...');
+
+// Add a 30-second timeout for login
+const loginTimeout = setTimeout(() => {
+    console.error('Discord login timeout after 30 seconds. Possible network issue or invalid token.');
+    console.error('Please check your internet connection and verify the bot token is valid.');
+    console.error('The process will now exit to prevent hanging.');
+    process.exit(1); // Exit with error code
+}, 30000);
+
+client.login(process.env.DISCORD_TOKEN)
+    .then(() => {
+        clearTimeout(loginTimeout); // Clear the timeout if login succeeds
+        console.log('Successfully logged in to Discord!');
+    })
+    .catch(error => {
+        clearTimeout(loginTimeout); // Clear the timeout if login fails with an error
+        console.error('Failed to log in to Discord:', error.message);
+        
+        if (error.message.includes('token')) {
+            console.error('DISCORD_TOKEN is invalid. Please check your environment variables.');
+        } else if (error.message.includes('network') || error.message.includes('connect')) {
+            console.error('Network error. Please check your internet connection.');
+        } else {
+            console.error('Unknown error occurred during login. Please try again later.');
+        }
+        
+        process.exit(1); // Exit with error code
+    });

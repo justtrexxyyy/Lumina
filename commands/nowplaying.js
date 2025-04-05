@@ -42,6 +42,11 @@ module.exports = {
         // Format requester properly
         const requesterDisplay = current.requester ? `<@${current.requester.id}>` : 'Unknown';
         
+        // Determine source based on the URI
+        const isYouTube = current.uri && (current.uri.includes('youtube.com') || current.uri.includes('youtu.be'));
+        const isSoundCloud = current.uri && current.uri.includes('soundcloud.com');
+        const sourceDisplay = isSoundCloud ? '🧡 SoundCloud' : (isYouTube ? '🔴 YouTube' : 'Unknown');
+        
         // Build the embed
         const npEmbed = createEmbed({
             title: `Now Playing ${current.isStream ? '(LIVE)' : ''}`,
@@ -80,6 +85,11 @@ module.exports = {
                 {
                     name: 'Queue',
                     value: `${player.queue.length} track(s)`,
+                    inline: true
+                },
+                {
+                    name: 'Source',
+                    value: sourceDisplay,
                     inline: true
                 }
             ],

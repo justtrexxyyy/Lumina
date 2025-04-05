@@ -9,7 +9,15 @@ module.exports = {
         .addStringOption(option => 
             option.setName('query')
                 .setDescription('Song name or URL')
-                .setRequired(true)),
+                .setRequired(true))
+        .addStringOption(option => 
+            option.setName('source')
+                .setDescription('Music source to search from')
+                .setRequired(false)
+                .addChoices(
+                    { name: 'YouTube', value: 'youtube' },
+                    { name: 'SoundCloud', value: 'soundcloud' }
+                )),
     
     async execute(interaction) {
         // Store reference to helpers
@@ -29,6 +37,7 @@ module.exports = {
         // Get essential data
         const { client } = interaction;
         const query = interaction.options.getString('query');
+        const source = interaction.options.getString('source') || 'youtube'; // Default to YouTube if no source specified
         const guildId = interaction.guildId;
         const textChannel = interaction.channel;
         
@@ -54,17 +63,19 @@ module.exports = {
             }
             
             // Resolve the track/playlist with better error handling
-            const result = await client.kazagumo.search(query, { requester: interaction.user })
-                .catch(error => {
-                    console.error('Search error in play command:', error);
-                    if (error.message && error.message.includes('AbortError')) {
-                        throw new Error('Connection to music server was interrupted. Please try again.');
-                    } else if (error.message && error.message.includes('fetch failed')) {
-                        throw new Error('Unable to connect to music server. Please try again later.');
-                    } else {
-                        throw new Error(`Unable to search: ${error.message || 'Unknown error'}`);
-                    }
-                });
+            const result = await client.kazagumo.search(query, { 
+                engine: source, // Use the selected source
+                requester: interaction.user 
+            }).catch(error => {
+                console.error('Search error in play command:', error);
+                if (error.message && error.message.includes('AbortError')) {
+                    throw new Error('Connection to music server was interrupted. Please try again.');
+                } else if (error.message && error.message.includes('fetch failed')) {
+                    throw new Error('Unable to connect to music server. Please try again later.');
+                } else {
+                    throw new Error(`Unable to search: ${error.message || 'Unknown error'}`);
+                }
+            });
             
             if (!result || !result.tracks.length) {
                 interactionHandled = true;
@@ -87,8 +98,9 @@ module.exports = {
                 // Add all tracks from playlist
                 player.queue.add(result.tracks);
                 
+                const sourceIcon = source === 'soundcloud' ? '🧡 SoundCloud' : '🔴 YouTube';
                 const playlistEmbed = createEmbed({
-                    description: `Added [${result.playlistName}](${config.supportServer}) to the queue`,
+                    description: `Added [${result.playlistName}](${config.supportServer}) to the queue\nSource: ${sourceIcon}\nTracks: ${result.tracks.length}`,
                     timestamp: true
                 });
                 
@@ -103,8 +115,9 @@ module.exports = {
                 player.queue.add(track);
                 
                 // Create a simplified track added embed
+                const sourceIcon = source === 'soundcloud' ? '🧡 SoundCloud' : '🔴 YouTube';
                 const trackEmbed = createEmbed({
-                    description: `Added ${track.isStream ? 'LIVE ' : ''}[${track.title}](${config.supportServer}) to the queue`,
+                    description: `Added ${track.isStream ? 'LIVE ' : ''}[${track.title}](${config.supportServer}) to the queue\nSource: ${sourceIcon}`,
                     timestamp: true
                 });
                 

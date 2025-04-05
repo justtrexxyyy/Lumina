@@ -9,12 +9,21 @@ module.exports = {
         .addStringOption(option => 
             option.setName('query')
                 .setDescription('The song to search for')
-                .setRequired(true)),
+                .setRequired(true))
+        .addStringOption(option => 
+            option.setName('source')
+                .setDescription('Music source to search from')
+                .setRequired(false)
+                .addChoices(
+                    { name: 'YouTube', value: 'youtube' },
+                    { name: 'SoundCloud', value: 'soundcloud' }
+                )),
     
     async execute(interaction) {
         const { client, member } = interaction;
         const guildId = interaction.guildId;
         const query = interaction.options.getString('query');
+        const source = interaction.options.getString('source') || 'youtube'; // Default to YouTube if no source specified
         
         // Check if user is in a voice channel
         if (!member.voice.channel) {
@@ -27,9 +36,32 @@ module.exports = {
         await interaction.deferReply();
         
         try {
+            // Wait for a brief moment to ensure nodes are properly registered
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Check if there are any available nodes before searching
+            if (!client.kazagumo.shoukaku.nodes.size) {
+                console.log('No Lavalink nodes are connected. Attempting to reconnect...');
+                // Try to reconnect to nodes
+                try {
+                    await client.kazagumo.shoukaku.reconnect();
+                    // Wait a brief moment for reconnection
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (reconnectError) {
+                    console.error('Reconnection attempt failed:', reconnectError);
+                }
+                
+                // Check again if nodes are available
+                if (!client.kazagumo.shoukaku.nodes.size) {
+                    return interaction.editReply({ 
+                        embeds: [errorEmbed('Music server is currently unavailable. Please try again later.')]
+                    });
+                }
+            }
+            
             // Search for tracks with better error handling
             const searchResult = await client.kazagumo.search(query, { 
-                engine: 'youtube',
+                engine: source, // Use selected source
                 requester: interaction.user 
             }).catch(error => {
                 console.error('Search error:', error);
@@ -38,6 +70,8 @@ module.exports = {
                     throw new Error('Connection to music server timed out. Please try again later.');
                 } else if (error.message && error.message.includes('fetch failed')) {
                     throw new Error('Unable to connect to music server. Please try again soon.');
+                } else if (error.message && error.message.includes('AbortError')) {
+                    throw new Error('Search was interrupted. Please try again.');
                 } else {
                     throw new Error(`Unable to search: ${error.message || 'Unknown error'}`);
                 }
@@ -77,11 +111,13 @@ module.exports = {
             
             const row = new ActionRowBuilder().addComponents(selectMenu);
             
-            // Create embed with all search results
+            // Create embed with search results, but don't include song names
+            const sourceName = source === 'soundcloud' ? 'SoundCloud' : 'YouTube';
             const searchEmbed = createEmbed({
                 title: 'Search Results',
                 description: `Here are the search results for: **${query}**\n\nSelect a track to play from the dropdown menu below.`,
-                thumbnail: client.user.displayAvatarURL()
+                thumbnail: client.user.displayAvatarURL(),
+                footer: `Results provided by ${sourceName}`
             });
             
             const response = await interaction.editReply({
@@ -135,8 +171,9 @@ module.exports = {
                         await player.play();
                     }
                     
+                    const sourceIcon = source === 'soundcloud' ? '🧡 SoundCloud' : '🔴 YouTube';
                     await i.update({ 
-                        content: `Added to queue: **${selectedTrack.title}**`, 
+                        content: `Added to queue: **${selectedTrack.title}**\nSource: ${sourceIcon}`, 
                         embeds: [], 
                         components: [] 
                     });
