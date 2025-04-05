@@ -1,5 +1,36 @@
 module.exports = {
     /**
+     * Creates a simplified music card format
+     * @param {Object} track The track object
+     * @param {Boolean} isPlaying Whether the track is currently playing
+     * @returns {Object} Embed object for the music card
+     */
+    createMusicCard: (track, isPlaying = false) => {
+        // Get the track duration
+        const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
+        
+        // Create title text with playing indicator if needed
+        const title = isPlaying ? 'Now Playing' : 'Track';
+        
+        // Format the description to show only track name, artist and duration
+        const description = `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author} • \`${duration}\`${track.requester ? ` • <@${track.requester.id}>` : ''}`;
+        
+        // Get the embed from utils/embeds.js
+        const { createEmbed } = require('./embeds');
+        
+        // Process YouTube Music thumbnail to be smaller, more like SoundCloud size
+        // YouTube thumbnails are typically large, this ensures a more compact mobile-friendly size
+        let thumbnail = track.thumbnail;
+        
+        // Use a cleaner embed optimized for mobile viewing with SoundCloud-like thumbnail size
+        return createEmbed({
+            title: title,
+            description: description,
+            thumbnail: thumbnail
+        });
+    },
+    
+    /**
      * Format milliseconds into a readable time string
      * @param {Number} ms Duration in milliseconds
      * @returns {String} Formatted time string

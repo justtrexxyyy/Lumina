@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
-const { formatDuration } = require('../utils/formatters');
+const { formatDuration, createMusicCard } = require('../utils/formatters');
 const config = require('../config');
 
 module.exports = {
@@ -51,24 +51,21 @@ module.exports = {
             totalQueueDuration += current.length - player.position;
         }
         
-        // Create queue description without text-based music card
-        // Determine source for current track
-        const currentSourceIcon = '🔴';
+        // Create a simplified music card for the currently playing track
+        const currentCard = createMusicCard(current, true);
         
-        let queueDescription = `**Now Playing:**\n${currentSourceIcon} ${current.isStream ? 'LIVE | ' : ''}[${current.title}](${config.supportServer}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
-        
+        // Create description for upcoming tracks in the queue
+        let upcomingDescription = '';
         if (queue.length > 0) {
-            queueDescription += `**Up Next:**\n`;
-            
             const startIndex = (page - 1) * tracksPerPage;
             const endIndex = Math.min(startIndex + tracksPerPage, queue.length);
             
             for (let i = startIndex; i < endIndex; i++) {
                 const track = queue[i];
-                queueDescription += `**${i + 1}.** ${track.isStream ? 'LIVE ' : ''}[${track.title}](${config.supportServer}) | ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
+                upcomingDescription += `**${i + 1}.** ${track.author ? `${track.author} • ` : ''}[${track.title}](${config.supportServer}) • ${track.isStream ? 'LIVE' : formatDuration(track.length)}\n`;
             }
         } else {
-            queueDescription += `**Up Next:**\nNo more tracks in queue`;
+            upcomingDescription = 'No more tracks in queue';
         }
         
         // Add queue stats
@@ -79,9 +76,10 @@ module.exports = {
             `Volume: ${player.volume}%`
         ];
         
+        // Send both the current music card and the queue info
         const queueEmbed = createEmbed({
             title: `Queue for ${interaction.guild.name}`,
-            description: queueDescription,
+            description: `**Up Next:**\n${upcomingDescription}`,
             fields: [
                 {
                     name: 'Queue Info',
@@ -89,15 +87,18 @@ module.exports = {
                 }
             ],
             footer: `Page ${page}/${totalPages} | Use /queue <page> to view more`,
-            timestamp: true
+            thumbnail: current.thumbnail
         });
         
         // Add navigation buttons if there are multiple pages
         if (totalPages > 1) {
-            queueEmbed.footer.text += ` | ${queue.length} tracks in queue`;
+            // For our custom implementation, the footer is a string, not an object
+            queueEmbed.footer = `${queueEmbed.footer} | ${queue.length} tracks in queue`;
         }
         
-        await interaction.reply({ embeds: [queueEmbed] });
+        await interaction.reply({ 
+            embeds: [currentCard, queueEmbed] 
+        });
     },
 };
 

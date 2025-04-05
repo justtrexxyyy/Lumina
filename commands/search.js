@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
+const { formatDuration, createMusicCard } = require('../utils/formatters');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -51,7 +52,7 @@ module.exports = {
             
             // Search for tracks with better error handling
             const searchResult = await client.kazagumo.search(query, { 
-                engine: 'soundcloud', // Use SoundCloud as the source
+                engine: 'youtube_music', // Use YouTube Music as the source
                 requester: interaction.user 
             }).catch(error => {
                 console.error('Search error:', error);
@@ -158,9 +159,17 @@ module.exports = {
                         await player.play();
                     }
                     
+                    // Create a simple added to queue embed
+                    const { createEmbed } = require('../utils/embeds');
+                    const queueEmbed = createEmbed({
+                        title: 'Added to Queue',
+                        description: `[${selectedTrack.title}](${config.supportServer})${selectedTrack.isStream ? ' (LIVE)' : ''}`,
+                        // No thumbnail for a cleaner look
+                    });
+                    
                     await i.update({ 
-                        content: `Added to queue: **${selectedTrack.title}**`, 
-                        embeds: [], 
+                        content: '', 
+                        embeds: [queueEmbed], 
                         components: [] 
                     });
                 } catch (error) {

@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
-const { formatDuration, createProgressBar } = require('../utils/formatters');
+const { formatDuration, createProgressBar, createMusicCard } = require('../utils/formatters');
 const { getActiveFilter, getFilterDisplayName, hasActiveFilter } = require('../utils/filters');
 const config = require('../config');
 
@@ -27,75 +27,44 @@ module.exports = {
             return interaction.reply({ embeds: [errorEmbed('There is no track currently playing!')], ephemeral: true });
         }
         
+        // Use the simplified music card format
+        const musicCard = createMusicCard(current, true);
+        
         // Get position and create progress bar
         const position = player.position;
         const duration = current.length;
         const isStream = current.isStream;
-        const positionFormatted = formatDuration(position);
-        const durationFormatted = isStream ? 'LIVE' : formatDuration(duration);
         
-        // Create progress bar
+        // Create progress bar and add it to the description
         const progressBar = isStream ? 'LIVE' : createProgressBar(position, duration);
-        
-        // Get loop mode display
-        const loopMode = getLoopModeName(player.loop);
-        
-        // Format requester properly
-        const requesterDisplay = current.requester ? `<@${current.requester.id}>` : 'Unknown';
         
         // Check if there's an active filter
         const activeFilter = hasActiveFilter(player) ? getFilterDisplayName(getActiveFilter(player)) : 'None';
         
-        // No source display needed
+        // Add progress bar to the embed description
+        musicCard.description += `\n\n${progressBar}`;
         
-        // Build the embed
-        const npEmbed = createEmbed({
-            title: `Now Playing ${current.isStream ? '(LIVE)' : ''}`,
-            thumbnail: current.thumbnail || config.botLogo,
-            fields: [
-                {
-                    name: 'Track',
-                    value: `[${current.title}](${config.supportServer})`,
-                    inline: false
-                },
-
-                {
-                    name: 'Requested By',
-                    value: requesterDisplay,
-                    inline: true
-                },
-                {
-                    name: 'Duration',
-                    value: isStream ? 'LIVE' : `${positionFormatted} / ${durationFormatted}`,
-                    inline: true
-                },
-                {
-                    name: 'Volume',
-                    value: `${player.volume}%`,
-                    inline: true
-                },
-                {
-                    name: 'Loop',
-                    value: loopMode,
-                    inline: true
-                },
-                {
-                    name: 'Queue',
-                    value: `${player.queue.length} track(s)`,
-                    inline: true
-                },
-                {
-                    name: 'Filter',
-                    value: activeFilter,
-                    inline: true
-                },
-
-            ],
-            description: isStream ? null : progressBar
-        });
+        // Add minimal fields for additional info that should still be shown
+        musicCard.fields = [
+            {
+                name: 'Volume',
+                value: `${player.volume}%`,
+                inline: true
+            },
+            {
+                name: 'Filter',
+                value: activeFilter,
+                inline: true
+            },
+            {
+                name: 'Loop',
+                value: getLoopModeName(player.loop),
+                inline: true
+            }
+        ];
         
-        // Reply with just the embed and no buttons
-        await interaction.reply({ embeds: [npEmbed] });
+        // Reply with the music card
+        await interaction.reply({ embeds: [musicCard] });
     },
 };
 

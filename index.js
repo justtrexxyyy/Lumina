@@ -52,10 +52,12 @@ const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), config.lavalink.
 });
 
 client.kazagumo = new Kazagumo({
-    defaultSearchEngine: 'youtube', // Keep YouTube as default but we'll add support for SoundCloud
+    defaultSearchEngine: 'youtube_music', // Use YouTube Music as default search engine
+    defaultYoutubeThumbnail: 'mqdefault', // Use mobile quality for thumbnails
     sources: {
-        youtube: true,   // Enable YouTube source
-        soundcloud: true // Enable SoundCloud source
+        youtube: false,     // Disable regular YouTube source
+        youtube_music: true, // Enable YouTube Music source
+        soundcloud: false   // Disable SoundCloud source
     },
     send: (guildId, payload) => {
         const guild = client.guilds.cache.get(guildId);
@@ -191,12 +193,9 @@ client.kazagumo.on('playerStart', async (player, track) => {
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
         try {
-            // Create smaller embed with createEmbed instead of setAuthor to avoid iconURL issues
-            const embed = createEmbed({
-                title: 'Now Playing',
-                thumbnail: track.thumbnail || null,
-                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.isStream ? 'LIVE' : formatDuration(track.length)} • <@${track.requester.id}>`
-            });
+            // Use the simplified music card format
+            const { createMusicCard } = require('./utils/formatters');
+            const embed = createMusicCard(track, true);
             
             // Add buttons and filter select menu for now playing message
             const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
@@ -297,11 +296,12 @@ client.kazagumo.on('playerStart', async (player, track) => {
         } catch (error) {
             console.error('Error sending now playing message:', error);
             
-            // Simple fallback embed
+            // Simple fallback embed using the most basic format
+            const { createEmbed } = require('./utils/embeds');
             const embed = createEmbed({
                 title: `Now Playing`,
-                description: `[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})`,
-                footer: 'Error occurred while creating the full embed'
+                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author} • ${track.isStream ? 'LIVE' : formatDuration(track.length)}`,
+                thumbnail: track.thumbnail
             });
             
             // Create a simplified dropdown for fallback
@@ -388,35 +388,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
         // Silent catch - no need to log
     }
     
-    // When player is empty, send a message with working buttons to inform users
-    if (channel) {
-        // Create buttons that work even with no active player
-        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-        const actionRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('play')
-                    .setLabel('Play Music')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('leave')
-                    .setLabel('Leave Channel')
-                    .setStyle(ButtonStyle.Secondary)
-            );
-            
-        // Send a queue ended message with buttons
-        try {
-            await channel.send({
-                embeds: [createEmbed({
-                    title: 'Queue Ended',
-                    description: 'The music queue has ended.\nUse the buttons below or type `/play` to play more music!'
-                })],
-                components: [actionRow]
-            });
-        } catch (error) {
-            // Silent catch - no need to log
-        }
-    }
+    // We removed the queue ended message to simplify the UI
     
     // Autoplay functionality
     if (client.autoplay && client.autoplay.has(guildId) && player.queue.previous && player.queue.previous.length > 0) {
@@ -425,9 +397,9 @@ client.kazagumo.on('playerEmpty', async (player) => {
             const lastTrack = player.queue.previous[player.queue.previous.length - 1];
             if (!lastTrack) return;
             
-            // Search for related tracks on SoundCloud
+            // Search for related tracks on YouTube Music
             const result = await client.kazagumo.search(lastTrack.title || lastTrack.uri, {
-                engine: 'soundcloud', // Use SoundCloud for autoplay
+                engine: 'youtube_music', // Use YouTube Music for autoplay
                 requester: lastTrack.requester
             });
             
@@ -451,17 +423,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                         await player.play();
                     }
                     
-                    // Send info message about autoplay
-                    if (channel) {
-                        const autoplayEmbed = createEmbed({
-                            title: 'Autoplay',
-                            description: `Added ${tracksToAdd.length} similar tracks to the queue.`
-                        });
-                        
-                        await channel.send({ embeds: [autoplayEmbed] }).catch(() => {
-                            // Silently handle error without logging to console
-                        });
-                    }
+                    // We removed the autoplay message to make console output cleaner
                     
                     // Return early since we're continuing playback
                     return;
@@ -476,65 +438,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
     if (client.twentyFourSeven.has(guildId)) return;
     
     if (channel) {
-        // Create an enhanced queue ended embed with more information and styling
-        const queueEndEmbed = createEmbed({
-            title: 'Music Queue Ended',
-            description: 'The music player has finished playing all tracks in the queue.',
-            fields: [
-                {
-                    name: 'Session Stats',
-                    value: `Total Tracks Played: ${player.queue.previous ? player.queue.previous.length : 0}`,
-                    inline: true
-                },
-                {
-                    name: 'Auto Disconnect',
-                    value: 'The bot will automatically leave the voice channel in 1 minute unless new tracks are added.',
-                    inline: false
-                },
-                {
-                    name: 'Add More Music',
-                    value: 'Use `/play` command to add more tracks to the queue.',
-                    inline: true
-                },
-
-                {
-                    name: '24/7 Mode',
-                    value: 'Use `/247` command to keep the bot in the voice channel indefinitely.',
-                    inline: true
-                }
-            ],
-            thumbnail: config.botLogo || null,
-            color: '#ED4245',
-            footer: { text: `${client.user.username} • Advanced Music Bot` }
-        });
-        
-        // Create action row with buttons for quick actions
-        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-        
-        const queueEndRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('help')
-                    .setLabel('Help')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('play')
-                    .setLabel('Play New Track')
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId('247toggle')
-                    .setLabel('Toggle 24/7 Mode')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('leave')
-                    .setLabel('Leave Now')
-                    .setStyle(ButtonStyle.Danger)
-            );
-        
-        channel.send({ 
-            embeds: [queueEndEmbed],
-            components: [queueEndRow]
-        }).catch(console.error);
+        // Set a timeout to destroy the player with no second message
         
         // Set a timeout to destroy the player if no new songs are added AND the player is still empty
         const inactivityTimeout = setTimeout(() => {
@@ -546,12 +450,15 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 !client.twentyFourSeven.has(guildId)) {
                 
                 currentPlayer.destroy();
+                const { createEmbed } = require('./utils/embeds');
                 const leaveEmbed = createEmbed({
                     title: 'Channel Left',
-                    description: 'Left voice channel due to inactivity.',
-                    color: '#ED4245'
+                    description: 'Left voice channel due to inactivity.'
                 });
-                channel.send({ embeds: [leaveEmbed] }).catch(() => {});
+                
+                channel.send({ 
+                    embeds: [leaveEmbed]
+                }).catch(() => {});
             }
         }, 180000); // Extended to 3 minutes for better user experience
         
@@ -590,7 +497,14 @@ client.kazagumo.on('playerException', (player, error) => {
     }
     
     if (channel) {
-        channel.send({ content: errorMessage }).catch(console.error);
+        const { createEmbed } = require('./utils/embeds');
+        const errorEmbed = createEmbed({
+            title: 'Playback Error',
+            description: errorMessage.replace(/\*\*/g, ''),
+            color: 0xff0000 // Red color for errors
+        });
+        
+        channel.send({ embeds: [errorEmbed] }).catch(console.error);
     }
     
     // Try to recover the player if needed
@@ -633,7 +547,14 @@ client.kazagumo.on('playerError', (player, error) => {
     }
     
     if (channel) {
-        channel.send({ content: errorMessage }).catch(() => {});
+        const { createEmbed } = require('./utils/embeds');
+        const errorEmbed = createEmbed({
+            title: 'Player Error',
+            description: errorMessage.replace(/\*\*/g, ''),
+            color: 0xff0000 // Red color for errors
+        });
+        
+        channel.send({ embeds: [errorEmbed] }).catch(() => {});
     }
     
     // Attempt to reconnect if needed
@@ -667,7 +588,13 @@ client.kazagumo.on('playerError', (player, error) => {
                                 });
                                 
                                 if (channel) {
-                                    channel.send({ content: `Successfully reconnected to the voice channel.` }).catch(() => {});
+                                    const { createEmbed } = require('./utils/embeds');
+                                    const reconnectEmbed = createEmbed({
+                                        title: 'Reconnected',
+                                        description: 'Successfully reconnected to the voice channel.'
+                                    });
+                                    
+                                    channel.send({ embeds: [reconnectEmbed] }).catch(() => {});
                                 }
                             } catch (e) {
                                 // Silent catch for failed player creation
@@ -689,44 +616,17 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
         // Handle queue end buttons
         if (interaction.customId === 'help') {
-            const helpEmbed = createEmbed({
-                title: 'Bot Help',
-                description: 'Here are the main commands you can use:',
-                fields: [
-                    {
-                        name: '/play',
-                        value: 'Play a song from YouTube, Spotify, or other sources',
-                        inline: true
-                    },
-                    {
-                        name: '/queue',
-                        value: 'View the current queue',
-                        inline: true
-                    },
-                    {
-                        name: '/skip',
-                        value: 'Skip the current track',
-                        inline: true
-                    },
-                    {
-                        name: '/stop',
-                        value: 'Stop playback and clear queue',
-                        inline: true
-                    },
-                    {
-                        name: '/247',
-                        value: 'Toggle 24/7 mode',
-                        inline: true
-                    },
-                    {
-                        name: '/help',
-                        value: 'Show detailed help',
-                        inline: true
-                    },
+            const helpText = `**Bot Help**
+Here are the main commands you can use:
 
-                ]
-            });
-            return interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+• \`/play\` - Play a song by name or URL
+• \`/queue\` - View the current queue
+• \`/skip\` - Skip the current track
+• \`/stop\` - Stop playback and clear queue
+• \`/247\` - Toggle 24/7 mode
+• \`/help\` - Show detailed help`;
+            
+            return interaction.reply({ content: helpText, ephemeral: true });
         }
         
         if (interaction.customId === 'play') {

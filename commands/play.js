@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
+const { createMusicCard, formatDuration } = require('../utils/formatters');
 const config = require('../config');
 
 module.exports = {
@@ -29,7 +30,7 @@ module.exports = {
         // Get essential data
         const { client } = interaction;
         const query = interaction.options.getString('query');
-        const source = 'soundcloud'; // Use SoundCloud
+        const source = 'youtube_music'; // Use YouTube Music
         const guildId = interaction.guildId;
         const textChannel = interaction.channel;
         
@@ -56,7 +57,7 @@ module.exports = {
             
             // Resolve the track/playlist with better error handling
             const result = await client.kazagumo.search(query, { 
-                engine: source, // Use SoundCloud
+                engine: source, // Use YouTube Music
                 requester: interaction.user 
             }).catch(error => {
                 console.error('Search error in play command:', error);
@@ -90,9 +91,11 @@ module.exports = {
                 // Add all tracks from playlist
                 player.queue.add(result.tracks);
                 
+                // Create a playlist added embed with the first track thumbnail
                 const playlistEmbed = createEmbed({
-                    description: `Added [${result.playlistName}](${config.supportServer}) to the queue\nTracks: ${result.tracks.length}`,
-                    timestamp: true
+                    title: `Playlist Added`,
+                    description: `**[${result.playlistName}](${config.supportServer})**\n${result.tracks.length} tracks • ${calculatePlaylistDuration(result.tracks)}`,
+                    thumbnail: result.tracks[0]?.thumbnail || null
                 });
                 
                 interactionHandled = true;
@@ -105,15 +108,17 @@ module.exports = {
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                // Create a simplified track added embed
-                const trackEmbed = createEmbed({
-                    description: `Added ${track.isStream ? 'LIVE ' : ''}[${track.title}](${config.supportServer}) to the queue`,
-                    timestamp: true
+                // Create a simple added to queue embed
+                const { createEmbed } = require('../utils/embeds');
+                const queueEmbed = createEmbed({
+                    title: 'Added to Queue',
+                    description: `[${track.title}](${config.supportServer})${track.isStream ? ' (LIVE)' : ''}`,
+                    // No thumbnail for a cleaner look
                 });
                 
                 interactionHandled = true;
                 await interaction.editReply({ 
-                    embeds: [trackEmbed], 
+                    embeds: [queueEmbed], 
                     components: [] 
                 });
             }
@@ -194,23 +199,7 @@ module.exports = {
     },
 };
 
-// Helper functions
-function formatDuration(ms) {
-    const seconds = Math.floor((ms / 1000) % 60);
-    const minutes = Math.floor((ms / (1000 * 60)) % 60);
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-
-    let result = '';
-    if (hours > 0) {
-        result += `${hours}:`;
-        result += `${minutes.toString().padStart(2, '0')}:`;
-    } else {
-        result += `${minutes}:`;
-    }
-    result += `${seconds.toString().padStart(2, '0')}`;
-
-    return result;
-}
+// Helper functions for this file are imported from utils/formatters.js
 
 function calculatePlaylistDuration(tracks) {
     const totalMs = tracks.reduce((acc, track) => {
