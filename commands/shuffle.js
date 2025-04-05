@@ -31,9 +31,9 @@ module.exports = {
             return interaction.reply({ embeds: [errorEmbed('You need to be in the same voice channel as me!')], ephemeral: true });
         }
         
-        // Check if there are enough tracks in the queue
-        if (player.queue.length < 2) {
-            return interaction.reply({ embeds: [errorEmbed('Need at least 2 tracks in the queue to shuffle!')], ephemeral: true });
+        // Check if there are any tracks in the queue
+        if (player.queue.length < 1) {
+            return interaction.reply({ embeds: [errorEmbed('Need at least 1 track in the queue to shuffle!')], ephemeral: true });
         }
         
         // Shuffle the queue

@@ -93,7 +93,7 @@ module.exports = {
             tracks.forEach((track, index) => {
                 selectMenu.addOptions({
                     label: `${track.title.substring(0, 90)}${track.title.length > 90 ? '...' : ''}`,
-                    description: ``,
+                    description: ' ', // Non-empty space to satisfy Discord.js requirement
                     value: index.toString()
                 });
             });

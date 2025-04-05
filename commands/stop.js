@@ -36,9 +36,21 @@ module.exports = {
             client.twentyFourSeven.delete(guildId);
         }
         
-        // No longer deleting the "Now Playing" message when using the stop command
-        // This allows users to see what was playing even after stopping
-        // The message will be replaced when a new track starts playing
+        // Remove components from the now playing message
+        const storedMessage = client.nowPlayingMessages.get(guildId);
+        if (storedMessage) {
+            const channel = client.channels.cache.get(storedMessage.channelId);
+            if (channel) {
+                try {
+                    const message = await channel.messages.fetch(storedMessage.messageId);
+                    if (message && message.editable) {
+                        await message.edit({ components: [] }).catch(() => {});
+                    }
+                } catch (error) {
+                    // Silently handle any errors that occur when modifying the message
+                }
+            }
+        }
         
         // Stop and destroy the player
         player.destroy();

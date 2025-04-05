@@ -60,7 +60,7 @@ module.exports = {
             }
         }
         
-        // Delete the "Now Playing" message if it exists
+        // Remove components from the now playing message
         try {
             const messageInfo = client.nowPlayingMessages.get(guildId);
             if (messageInfo) {
@@ -68,19 +68,16 @@ module.exports = {
                 if (messageChannel) {
                     try {
                         const message = await messageChannel.messages.fetch(messageInfo.messageId);
-                        if (message) {
-                            await message.delete();
-                            console.log(`Deleted Now Playing message due to skip command`);
+                        if (message && message.editable) {
+                            await message.edit({ components: [] }).catch(() => {});
                         }
                     } catch (fetchError) {
-                        console.log(`Could not fetch/delete Now Playing message: ${fetchError.message}`);
+                        // Silent catch, no need to log
                     }
                 }
-                // Remove from the map regardless of deletion success
-                client.nowPlayingMessages.delete(guildId);
             }
         } catch (error) {
-            console.error(`Error deleting Now Playing message during skip: ${error.message}`);
+            // Silent catch, no need to log
         }
         
         // Skip the current track

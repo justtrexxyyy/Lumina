@@ -157,6 +157,29 @@ shoukaku.on('error', (name, error) => {
 });
 
 // Kazagumo events
+// Event when a track ends
+client.kazagumo.on('playerEnd', async (player) => {
+    try {
+        // Find and edit the now playing message to remove components
+        const storedMessage = client.nowPlayingMessages.get(player.guildId);
+        if (storedMessage) {
+            const channel = client.channels.cache.get(storedMessage.channelId);
+            if (channel) {
+                try {
+                    const message = await channel.messages.fetch(storedMessage.messageId);
+                    if (message && message.editable) {
+                        await message.edit({ components: [] }).catch(() => {});
+                    }
+                } catch (error) {
+                    // Silent catch for message fetching errors
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error in playerEnd event:', error);
+    }
+});
+
 client.kazagumo.on('playerStart', async (player, track) => {
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
