@@ -18,13 +18,14 @@ module.exports = {
         // Get the embed from utils/embeds.js
         const { createEmbed } = require('./embeds');
         
-        // Get the exact mobile thumbnail size with rounded corners
-        // Ensuring this matches perfectly with the example
+        // Get thumbnail at the perfect size for Discord mobile (square with rounded corners)
+        // Looking at the example screenshots, the thumbnails need to be square with rounded corners
         let thumbnail = track.thumbnail;
         
-        // For YouTube thumbnails, use a specific format to ensure mobile-friendly size
+        // For YouTube thumbnails, specifically use default (small square) format for Discord mobile
         if (thumbnail && thumbnail.includes('youtube.com')) {
-            // Force using mqdefault (320x180) which is the perfect size for mobile view
+            // Force using default.jpg which gives us a square thumbnail with rounded corners
+            // This matches exactly what we see in the screenshots
             if (thumbnail.includes('i.ytimg.com')) {
                 // For YouTube image server thumbnails, use consistent pattern
                 let videoId = '';
@@ -33,12 +34,12 @@ module.exports = {
                 const match = thumbnail.match(/\/vi\/([a-zA-Z0-9_-]+)\//);
                 if (match && match[1]) {
                     videoId = match[1];
-                    // Rebuild URL with consistent format
-                    thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+                    // Rebuild URL with square thumbnail format for Discord mobile
+                    thumbnail = `https://i.ytimg.com/vi/${videoId}/default.jpg`;
                 }
             } else {
-                // Otherwise replace any quality parameter with mqdefault
-                thumbnail = thumbnail.replace(/\/(maxresdefault|sddefault|hqdefault|default)\.jpg/, '/mqdefault.jpg');
+                // Otherwise replace any quality parameter with default
+                thumbnail = thumbnail.replace(/\/(maxresdefault|sddefault|hqdefault|mqdefault)\.jpg/, '/default.jpg');
             }
         }
         
