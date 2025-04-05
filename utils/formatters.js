@@ -24,8 +24,9 @@ module.exports = {
         
         // For YouTube thumbnails, use the standard thumbnail which gives a rectangular shape
         if (thumbnail && thumbnail.includes('youtube.com')) {
-            // Get the best quality thumbnail that's rectangular with similar dimensions to example
-            thumbnail = thumbnail.replace(/maxresdefault|sddefault/, 'hqdefault');
+            // Replace any quality with 'mqdefault' to get consistently sized thumbnails
+            // This will give us the rectangular thumbnail with rounded corners seen in screenshot
+            thumbnail = thumbnail.replace(/maxresdefault|sddefault|hqdefault|default/, 'mqdefault');
         }
         
         // Use a cleaner embed optimized for mobile viewing with SoundCloud-like thumbnail size

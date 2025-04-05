@@ -454,7 +454,16 @@ client.kazagumo.on('playerEmpty', async (player) => {
                         await player.play();
                     }
                     
-                    // We removed the autoplay message to make console output cleaner
+                    // Send a simple message that autoplay is continuing without mentioning track names
+                    if (channel) {
+                        const { createEmbed } = require('./utils/embeds');
+                        const autoplayEmbed = createEmbed({
+                            title: 'Autoplay',
+                            description: 'Similar music will continue playing automatically.'
+                        });
+                        
+                        await channel.send({ embeds: [autoplayEmbed] }).catch(() => {});
+                    }
                     
                     // Return early since we're continuing playback
                     return;
