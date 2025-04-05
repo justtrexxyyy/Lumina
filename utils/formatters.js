@@ -18,15 +18,28 @@ module.exports = {
         // Get the embed from utils/embeds.js
         const { createEmbed } = require('./embeds');
         
-        // Process YouTube Music thumbnail to make it a rectangular with rounded corners
-        // This makes it look exactly like shown in the example screenshot
+        // Get the exact mobile thumbnail size with rounded corners
+        // Ensuring this matches perfectly with the example
         let thumbnail = track.thumbnail;
         
-        // For YouTube thumbnails, use the standard thumbnail which gives a rectangular shape
+        // For YouTube thumbnails, use a specific format to ensure mobile-friendly size
         if (thumbnail && thumbnail.includes('youtube.com')) {
-            // Replace any quality with 'mqdefault' to get consistently sized thumbnails
-            // This will give us the rectangular thumbnail with rounded corners seen in screenshot
-            thumbnail = thumbnail.replace(/maxresdefault|sddefault|hqdefault|default/, 'mqdefault');
+            // Force using mqdefault (320x180) which is the perfect size for mobile view
+            if (thumbnail.includes('i.ytimg.com')) {
+                // For YouTube image server thumbnails, use consistent pattern
+                let videoId = '';
+                
+                // Extract video ID from thumbnail URL
+                const match = thumbnail.match(/\/vi\/([a-zA-Z0-9_-]+)\//);
+                if (match && match[1]) {
+                    videoId = match[1];
+                    // Rebuild URL with consistent format
+                    thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+                }
+            } else {
+                // Otherwise replace any quality parameter with mqdefault
+                thumbnail = thumbnail.replace(/\/(maxresdefault|sddefault|hqdefault|default)\.jpg/, '/mqdefault.jpg');
+            }
         }
         
         // Use a cleaner embed optimized for mobile viewing with SoundCloud-like thumbnail size

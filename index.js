@@ -435,39 +435,29 @@ client.kazagumo.on('playerEmpty', async (player) => {
             });
             
             if (result && result.tracks.length > 0) {
-                // Filter out tracks that were already played to avoid repetition
-                const playedTrackUris = new Set();
-                if (player.queue.previous) {
-                    player.queue.previous.forEach(track => playedTrackUris.add(track.uri));
+                // Add ALL recommended tracks from YouTube Music
+                // No filtering - play everything that YouTube Music recommends
+                const tracksToAdd = result.tracks.slice(0, 5); // Add up to 5 recommended tracks
+                player.queue.add(tracksToAdd);
+                
+                // Start playing if not already playing
+                if (!player.playing && !player.paused) {
+                    await player.play();
                 }
                 
-                // Get new tracks that haven't been played yet
-                const newTracks = result.tracks.filter(track => !playedTrackUris.has(track.uri));
-                
-                if (newTracks.length > 0) {
-                    // Add up to 3 tracks to the queue
-                    const tracksToAdd = newTracks.slice(0, 3);
-                    player.queue.add(tracksToAdd);
+                // Send a simple message that autoplay is continuing without mentioning track names
+                if (channel) {
+                    const { createEmbed } = require('./utils/embeds');
+                    const autoplayEmbed = createEmbed({
+                        title: 'Autoplay',
+                        description: 'Music will continue playing automatically.'
+                    });
                     
-                    // Start playing if not already playing
-                    if (!player.playing && !player.paused) {
-                        await player.play();
-                    }
-                    
-                    // Send a simple message that autoplay is continuing without mentioning track names
-                    if (channel) {
-                        const { createEmbed } = require('./utils/embeds');
-                        const autoplayEmbed = createEmbed({
-                            title: 'Autoplay',
-                            description: 'Similar music will continue playing automatically.'
-                        });
-                        
-                        await channel.send({ embeds: [autoplayEmbed] }).catch(() => {});
-                    }
-                    
-                    // Return early since we're continuing playback
-                    return;
+                    await channel.send({ embeds: [autoplayEmbed] }).catch(() => {});
                 }
+                
+                // Return early since we're continuing playback
+                return;
             }
         } catch (error) {
             // Handle error silently without logging to console
