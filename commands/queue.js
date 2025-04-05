@@ -52,7 +52,10 @@ module.exports = {
         }
         
         // Create queue description without text-based music card
-        let queueDescription = `**Now Playing:**\n${current.isStream ? 'LIVE | ' : ''}[${current.title}](${config.supportServer}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
+        // Determine source for current track
+        const currentSourceIcon = '🔴';
+        
+        let queueDescription = `**Now Playing:**\n${currentSourceIcon} ${current.isStream ? 'LIVE | ' : ''}[${current.title}](${config.supportServer}) | ${formatDuration(current.isStream ? 0 : current.length)}\n\n`;
         
         if (queue.length > 0) {
             queueDescription += `**Up Next:**\n`;

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const { formatDuration, createProgressBar } = require('../utils/formatters');
+const { getActiveFilter, getFilterDisplayName, hasActiveFilter } = require('../utils/filters');
 const config = require('../config');
 
 module.exports = {
@@ -42,10 +43,10 @@ module.exports = {
         // Format requester properly
         const requesterDisplay = current.requester ? `<@${current.requester.id}>` : 'Unknown';
         
-        // Determine source based on the URI
-        const isYouTube = current.uri && (current.uri.includes('youtube.com') || current.uri.includes('youtu.be'));
-        const isSoundCloud = current.uri && current.uri.includes('soundcloud.com');
-        const sourceDisplay = isSoundCloud ? '🧡 SoundCloud' : (isYouTube ? '🔴 YouTube' : 'Unknown');
+        // Check if there's an active filter
+        const activeFilter = hasActiveFilter(player) ? getFilterDisplayName(getActiveFilter(player)) : 'None';
+        
+        // No source display needed
         
         // Build the embed
         const npEmbed = createEmbed({
@@ -57,11 +58,7 @@ module.exports = {
                     value: `[${current.title}](${config.supportServer})`,
                     inline: false
                 },
-                {
-                    name: 'Artist',
-                    value: current.author || 'Unknown',
-                    inline: true
-                },
+
                 {
                     name: 'Requested By',
                     value: requesterDisplay,
@@ -88,10 +85,11 @@ module.exports = {
                     inline: true
                 },
                 {
-                    name: 'Source',
-                    value: sourceDisplay,
+                    name: 'Filter',
+                    value: activeFilter,
                     inline: true
-                }
+                },
+
             ],
             description: isStream ? null : progressBar
         });

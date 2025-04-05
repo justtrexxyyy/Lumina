@@ -34,7 +34,6 @@ const client = new Client({
 // Store commands in a collection
 client.commands = new Collection();
 client.twentyFourSeven = new Collection();
-client.autoplay = new Set();
 client.nowPlayingMessages = new Map(); // Map to store Now Playing messages (guildId -> messageId)
 
 // Initialize Shoukaku and Kazagumo with more robust error handling
@@ -166,7 +165,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const embed = createEmbed({
                 title: 'Now Playing',
                 thumbnail: track.thumbnail || null,
-                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author || 'Unknown'} • ${track.isStream ? 'LIVE' : formatDuration(track.length)} • <@${track.requester.id}>`
+                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.isStream ? 'LIVE' : formatDuration(track.length)} • <@${track.requester.id}>`
             });
             
             // Add buttons and filter select menu for now playing message
@@ -368,173 +367,57 @@ client.kazagumo.on('playerEmpty', async (player) => {
         }
     }
     
-    // Initialize autoplay set if it doesn't exist
-    if (!client.autoplay) {
-        client.autoplay = new Set();
-    }
-    
-    // Check if autoplay is enabled for this guild and proceed if enabled
-    if (client.autoplay.has(guildId)) {
+    // Autoplay functionality
+    if (client.autoplay && client.autoplay.has(guildId) && player.queue.previous && player.queue.previous.length > 0) {
         try {
-            // Get the last played track to find related tracks
-            let lastTrack;
+            // Get the last played track
+            const lastTrack = player.queue.previous[player.queue.previous.length - 1];
+            if (!lastTrack) return;
             
-            // Try to get the previous track from player.queue
-            if (player.queue && player.queue.previous) {
-                lastTrack = player.queue.previous;
-            } else {
-                // If no previous track, check player.current
-                if (player.current) {
-                    lastTrack = player.current;
-                } else {
-                    // If no track info available, inform the user and exit
-                    if (channel) {
-                        channel.send({ 
-                            embeds: [createEmbed({
-                                title: '❌ Autoplay: No Reference Track',
-                                description: 'Cannot find any track information to use as reference for autoplay.',
-                                color: '#ED4245',
-                                footer: 'Play a track first to enable autoplay suggestions'
-                            })]
-                        }).catch(console.error);
+            // Search for related tracks on SoundCloud
+            const result = await client.kazagumo.search(lastTrack.title || lastTrack.uri, {
+                engine: 'soundcloud', // Use SoundCloud for autoplay
+                requester: lastTrack.requester
+            });
+            
+            if (result && result.tracks.length > 0) {
+                // Filter out tracks that were already played to avoid repetition
+                const playedTrackUris = new Set();
+                if (player.queue.previous) {
+                    player.queue.previous.forEach(track => playedTrackUris.add(track.uri));
+                }
+                
+                // Get new tracks that haven't been played yet
+                const newTracks = result.tracks.filter(track => !playedTrackUris.has(track.uri));
+                
+                if (newTracks.length > 0) {
+                    // Add up to 3 tracks to the queue
+                    const tracksToAdd = newTracks.slice(0, 3);
+                    player.queue.add(tracksToAdd);
+                    
+                    // Start playing if not already playing
+                    if (!player.playing && !player.paused) {
+                        await player.play();
                     }
+                    
+                    // Send info message about autoplay
+                    if (channel) {
+                        const autoplayEmbed = createEmbed({
+                            title: 'Autoplay',
+                            description: `Added ${tracksToAdd.length} similar tracks to the queue.`
+                        });
+                        
+                        await channel.send({ embeds: [autoplayEmbed] }).catch(() => {
+                            // Silently handle error without logging to console
+                        });
+                    }
+                    
+                    // Return early since we're continuing playback
                     return;
                 }
             }
-            
-            // No need to send a searching message as requested
-            
-            // Determine search query - prefer URI, fall back to title+author
-            let searchQuery;
-            
-            if (lastTrack.uri) {
-                searchQuery = lastTrack.uri;
-            } else {
-                searchQuery = `${lastTrack.author ? lastTrack.author + ' - ' : ''}${lastTrack.title}`;
-            }
-            
-            // Search for related tracks
-            const result = await client.kazagumo.search(searchQuery, { 
-                engine: 'youtube',
-                requester: lastTrack.requester || { id: client.user.id, username: client.user.username } 
-            }).catch(e => {
-                return null;
-            });
-            
-            if (result && result.tracks && result.tracks.length > 0) {
-                // Filter out the track that just played and any videos (prefer music)
-                let filteredTracks = result.tracks.filter(track => {
-                    // More aggressive filtering of video content
-                    if (track.title) {
-                        const lowerTitle = track.title.toLowerCase();
-                        
-                        // Filter out obvious video content
-                        if (lowerTitle.includes('video') || 
-                            lowerTitle.includes('official vid') || 
-                            lowerTitle.includes('mv') || 
-                            lowerTitle.includes('m/v') ||
-                            lowerTitle.includes('music video') || 
-                            lowerTitle.includes('live performance') || 
-                            lowerTitle.includes('concert footage') ||
-                            lowerTitle.includes('behind the scenes')) {
-                            return false;
-                        }
-                    }
-                    
-                    // Check duration - music typically isn't extremely long
-                    // Filter out very long videos (more than 10 minutes)
-                    if (track.duration && track.duration > 600000) {
-                        return false;
-                    }
-                    
-                    // Filter out the track that just played
-                    if (lastTrack.uri && track.uri) {
-                        return track.uri !== lastTrack.uri;
-                    } else if (lastTrack.title && track.title) {
-                        return track.title !== lastTrack.title;
-                    }
-                    
-                    return true; // Keep if we can't compare
-                });
-                
-                if (filteredTracks.length > 0) {
-                    // Randomly select one of the tracks, with proper error checking
-                    const randomIndex = Math.floor(Math.random() * filteredTracks.length);
-                    const randomTrack = filteredTracks[randomIndex];
-                    
-                    // Verify the random track has the necessary properties
-                    if (!randomTrack || typeof randomTrack !== 'object') {
-                        console.error(`Autoplay: Selected track at index ${randomIndex} is undefined or not an object`);
-                        if (channel) {
-                            channel.send({ 
-                                embeds: [errorEmbed('Invalid track data returned from search.')]
-                            }).catch(console.error);
-                        }
-                        return;
-                    }
-                    
-                    try {
-                        // Verify the track has required properties before adding to queue
-                        if (!randomTrack.title) {
-                            randomTrack.title = "Unknown Track";
-                        }
-                        
-                        // Add the track to the queue
-                        player.queue.add(randomTrack);
-                        
-                        // Play it (since the queue was empty)
-                        if (!player.playing && !player.paused) {
-                            try {
-                                await player.play();
-                            } catch (e) {
-                                if (channel) {
-                                    channel.send({ 
-                                        embeds: [errorEmbed(`Failed to play the next track: ${e.message}`)]
-                                    }).catch(console.error);
-                                }
-                            }
-                        }
-                        
-                        // Send a simplified embed about the autoplay track
-                        if (channel) {
-                            channel.send({ 
-                                embeds: [createEmbed({
-                                    title: 'Added Track to Queue',
-                                    description: `**${randomTrack.title}**\nby **${randomTrack.author || 'Unknown Artist'}**`
-                                })]
-                            }).catch(console.error);
-                        }
-                        
-                        // Don't proceed with the disconnect logic since we have autoplay
-                        return;
-                    } catch (playError) {
-                        if (channel) {
-                            channel.send({ 
-                                embeds: [errorEmbed(`${playError.message}`)]
-                            }).catch(console.error);
-                        }
-                    }
-                } else {
-                    if (channel) {
-                        channel.send({ 
-                            embeds: [errorEmbed(`Couldn't find any suitable related tracks to play.`)]
-                        }).catch(console.error);
-                    }
-                }
-            } else {
-                if (channel) {
-                    channel.send({ 
-                        embeds: [errorEmbed(`Couldn't find any related tracks for autoplay.`)]
-                    }).catch(console.error);
-                }
-            }
         } catch (error) {
-            console.error('Autoplay Error:', error);
-            if (channel) {
-                channel.send({ 
-                    embeds: [errorEmbed('An unexpected error occurred while trying to use autoplay.')]
-                }).catch(console.error);
-            }
+            // Handle error silently without logging to console
         }
     }
     
@@ -562,6 +445,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     value: 'Use `/play` command to add more tracks to the queue.',
                     inline: true
                 },
+
                 {
                     name: '24/7 Mode',
                     value: 'Use `/247` command to keep the bot in the voice channel indefinitely.',
@@ -778,7 +662,8 @@ client.on('interactionCreate', async (interaction) => {
                         name: '/help',
                         value: 'Show detailed help',
                         inline: true
-                    }
+                    },
+
                 ]
             });
             return interaction.reply({ embeds: [helpEmbed], ephemeral: true });

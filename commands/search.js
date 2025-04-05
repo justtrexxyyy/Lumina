@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
-const { formatDuration } = require('../utils/formatters');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,21 +8,12 @@ module.exports = {
         .addStringOption(option => 
             option.setName('query')
                 .setDescription('The song to search for')
-                .setRequired(true))
-        .addStringOption(option => 
-            option.setName('source')
-                .setDescription('Music source to search from')
-                .setRequired(false)
-                .addChoices(
-                    { name: 'YouTube', value: 'youtube' },
-                    { name: 'SoundCloud', value: 'soundcloud' }
-                )),
+                .setRequired(true)),
     
     async execute(interaction) {
         const { client, member } = interaction;
         const guildId = interaction.guildId;
         const query = interaction.options.getString('query');
-        const source = interaction.options.getString('source') || 'youtube'; // Default to YouTube if no source specified
         
         // Check if user is in a voice channel
         if (!member.voice.channel) {
@@ -61,7 +51,7 @@ module.exports = {
             
             // Search for tracks with better error handling
             const searchResult = await client.kazagumo.search(query, { 
-                engine: source, // Use selected source
+                engine: 'soundcloud', // Use SoundCloud as the source
                 requester: interaction.user 
             }).catch(error => {
                 console.error('Search error:', error);
@@ -101,10 +91,9 @@ module.exports = {
                 
             // Add each track as an option
             tracks.forEach((track, index) => {
-                const duration = track.isStream ? 'LIVE' : formatDuration(track.length);
                 selectMenu.addOptions({
                     label: `${index + 1}. ${track.title.substring(0, 80)}${track.title.length > 80 ? '...' : ''}`,
-                    description: `${track.author ? track.author.substring(0, 80) : 'Unknown'} [${duration}]`.substring(0, 95),
+                    description: `Track ${index + 1}`,
                     value: index.toString()
                 });
             });
@@ -112,12 +101,10 @@ module.exports = {
             const row = new ActionRowBuilder().addComponents(selectMenu);
             
             // Create embed with search results, but don't include song names
-            const sourceName = source === 'soundcloud' ? 'SoundCloud' : 'YouTube';
             const searchEmbed = createEmbed({
                 title: 'Search Results',
                 description: `Here are the search results for: **${query}**\n\nSelect a track to play from the dropdown menu below.`,
-                thumbnail: client.user.displayAvatarURL(),
-                footer: `Results provided by ${sourceName}`
+                thumbnail: client.user.displayAvatarURL()
             });
             
             const response = await interaction.editReply({
@@ -171,9 +158,8 @@ module.exports = {
                         await player.play();
                     }
                     
-                    const sourceIcon = source === 'soundcloud' ? '🧡 SoundCloud' : '🔴 YouTube';
                     await i.update({ 
-                        content: `Added to queue: **${selectedTrack.title}**\nSource: ${sourceIcon}`, 
+                        content: `Added to queue: **${selectedTrack.title}**`, 
                         embeds: [], 
                         components: [] 
                     });

@@ -38,18 +38,47 @@ module.exports = {
         
         try {
             const { shoukaku } = client.kazagumo;
-            const node = shoukaku.nodes.get('Main Node');
+            // Use the first node from nodes.size as 'Main Node' might not be the correct name
+            const nodeEntry = shoukaku.nodes.entries().next().value;
+            const node = nodeEntry ? nodeEntry[1] : null;
             
-            if (node && node.stats) {
-                const stats = node.stats;
-                playersCount = stats.players || 'Unknown';
-                memoryUsedLavalink = stats.memory ? `${(stats.memory.used / 1024 / 1024).toFixed(2)} MB` : 'Unknown';
-                uptimeLavalink = stats.uptime ? formatUptime(stats.uptime) : 'Unknown';
+            if (node) {
+                console.log('Found Lavalink node:', node.name);
                 
-                lavalinkStats = `Memory: ${memoryUsedLavalink}\nPlayers: ${playersCount}\nUptime: ${uptimeLavalink}`;
+                // Even if node.stats isn't fully populated, we can still show some information
+                playersCount = node.stats && node.stats.players ? node.stats.players : client.kazagumo.players.size;
+                
+                // Get memory info if available
+                if (node.stats && node.stats.memory) {
+                    memoryUsedLavalink = `${(node.stats.memory.used / 1024 / 1024).toFixed(2)} MB`;
+                } else {
+                    memoryUsedLavalink = "Active";
+                }
+                
+                // Get uptime if available
+                if (node.stats && node.stats.uptime) {
+                    uptimeLavalink = formatUptime(node.stats.uptime);
+                } else {
+                    uptimeLavalink = "Active";
+                }
+                
+                // Node status info
+                const connectedStatus = node.state === 1 ? "Connected" : "Connecting";
+                
+                lavalinkStats = `Status: ${connectedStatus}\nMemory: ${memoryUsedLavalink}\nPlayers: ${playersCount}\nUptime: ${uptimeLavalink}`;
+            } else {
+                // If no node found, check if we have players which means Lavalink is working
+                if (client.kazagumo.players.size > 0) {
+                    lavalinkStats = `Status: Connected\nPlayers: ${client.kazagumo.players.size}\nNode information not available`;
+                }
             }
         } catch (error) {
             console.error('Error getting Lavalink stats:', error);
+            
+            // Even if we encounter an error, try to show the player count which should be accurate
+            if (client.kazagumo.players.size > 0) {
+                lavalinkStats = `Status: Connected\nPlayers: ${client.kazagumo.players.size}\nAdditional information not available`;
+            }
         }
         
         // Create and send the stats embed

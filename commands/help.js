@@ -28,7 +28,6 @@ module.exports = {
             { name: 'loop', description: 'Set loop mode', category: 'Music' },
             { name: 'remove', description: 'Remove a song', category: 'Music' },
             { name: 'move', description: 'Move track position', category: 'Music' },
-            { name: 'autoplay', description: 'Toggle autoplay mode', category: 'Music' },
             { name: 'lyrics', description: 'Get lyrics for the current or specified song', category: 'Music' },
             
             // Filter Commands

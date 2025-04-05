@@ -12,7 +12,7 @@ module.exports = {
             const { client } = interaction;
             const guildId = interaction.guildId;
             
-            console.log(`Autoplay command executed in guild: ${guildId}`);
+            // Autoplay command executed
             
             // Check if the user is in a voice channel
             const member = interaction.member;
@@ -36,31 +36,27 @@ module.exports = {
             
             // Make sure the autoplay collection exists
             if (!client.autoplay) {
-                console.log(`Creating new autoplay Set`);
                 client.autoplay = new Set();
             }
             
             // Check current autoplay status
             const autoplayEnabled = client.autoplay.has(guildId);
-            console.log(`Current autoplay status for guild ${guildId}: ${autoplayEnabled ? 'Enabled' : 'Disabled'}`);
             
             if (autoplayEnabled) {
                 client.autoplay.delete(guildId);
-                console.log(`Autoplay disabled for guild ${guildId}`);
                 
                 const disabledEmbed = createEmbed({
                     title: `Autoplay Disabled`,
-                    description: `Autoplay mode has been **disabled**.`
+                    description: `Autoplay mode has been **disabled**. The queue will end normally without adding new tracks.`
                 });
                 
                 await interaction.reply({ embeds: [disabledEmbed] });
             } else {
                 client.autoplay.add(guildId);
-                console.log(`Autoplay enabled for guild ${guildId}`);
                 
                 const enabledEmbed = createEmbed({
                     title: `Autoplay Enabled`,
-                    description: `Autoplay mode has been **enabled**.`
+                    description: `Autoplay mode has been **enabled**. When the queue ends, similar tracks will be automatically added.`
                 });
                 
                 await interaction.reply({ embeds: [enabledEmbed] });
