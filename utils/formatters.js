@@ -22,9 +22,16 @@ module.exports = {
         // Looking at the example screenshots, the thumbnails need to be square with rounded corners
         let thumbnail = track.thumbnail;
         
-        // For YouTube thumbnails, specifically use default (small square) format for Discord mobile
+        // For YouTube thumbnails, use maxresdefault and modify dimensions for square format
         if (thumbnail && thumbnail.includes('youtube.com')) {
-            // Force using default.jpg which gives us a square thumbnail with rounded corners
+            // Force maxresdefault for high quality and modify dimensions for square format
+            if (thumbnail.includes('i.ytimg.com')) {
+                const videoId = thumbnail.match(/\/vi\/([a-zA-Z0-9_-]+)\//)?.[1];
+                if (videoId) {
+                    // Use maxresdefault for best quality, Discord will handle resizing
+                    thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                }
+            }ners
             // This matches exactly what we see in the screenshots
             if (thumbnail.includes('i.ytimg.com')) {
                 // For YouTube image server thumbnails, use consistent pattern
