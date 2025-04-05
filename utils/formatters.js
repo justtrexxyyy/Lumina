@@ -18,14 +18,14 @@ module.exports = {
         // Get the embed from utils/embeds.js
         const { createEmbed } = require('./embeds');
         
-        // Process YouTube Music thumbnail to make it a square with rounded corners
-        // This makes it look exactly like the SoundCloud style as shown in the example
+        // Process YouTube Music thumbnail to make it a rectangular with rounded corners
+        // This makes it look exactly like shown in the example screenshot
         let thumbnail = track.thumbnail;
         
-        // For YouTube thumbnails, modify to get a square thumbnail
+        // For YouTube thumbnails, use the standard thumbnail which gives a rectangular shape
         if (thumbnail && thumbnail.includes('youtube.com')) {
-            // Get the highest quality small thumbnail that's more square
-            thumbnail = thumbnail.replace(/maxresdefault|sddefault/, 'mqdefault');
+            // Get the best quality thumbnail that's rectangular with similar dimensions to example
+            thumbnail = thumbnail.replace(/maxresdefault|sddefault/, 'hqdefault');
         }
         
         // Use a cleaner embed optimized for mobile viewing with SoundCloud-like thumbnail size
