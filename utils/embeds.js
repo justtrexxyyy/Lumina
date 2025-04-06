@@ -17,8 +17,8 @@ module.exports = {
             } : null,
             thumbnail: options.thumbnail ? {
                 url: options.thumbnail,
-                height: 180,
-                width: 180
+                height: 250,
+                width: 250
             } : null,
             image: options.image ? {
                 url: options.image

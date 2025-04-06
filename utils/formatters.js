@@ -3,19 +3,17 @@ const { createEmbed } = require('./embeds');
 module.exports = {
     createMusicCard: (track, isPlaying = false) => {
         const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
-        const title = isPlaying ? '🎵 Now Playing' : '🎵 Track';
-        const description = `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author}\n\`${duration}\`${track.requester ? `\nRequested by <@${track.requester.id}>` : ''}`;
+        const title = isPlaying ? 'Now Playing' : 'Track';
+        const description = `**${track.title}**\n${track.author}\n\`${duration}\``;
 
         let thumbnail = track.thumbnail;
         if (thumbnail && thumbnail.includes('youtube.com')) {
             if (thumbnail.includes('i.ytimg.com')) {
                 const videoId = thumbnail.match(/\/vi\/([a-zA-Z0-9_-]+)\//)?.[1];
                 if (videoId) {
-                    // Use hqdefault for better quality
                     thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
                 }
             } else {
-                // Always use hqdefault for consistent quality
                 thumbnail = thumbnail.replace(/\/(maxresdefault|sddefault|mqdefault|default)\.jpg/, '/hqdefault.jpg');
             }
         }
