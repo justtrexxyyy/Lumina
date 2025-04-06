@@ -56,9 +56,9 @@ module.exports = {
             }
         }
         
-        // Button interactions are now handled in index.js
-        // This handler is disabled to prevent conflicts
-        if (false && interaction.isButton()) {
+        // Re-enabled button interactions in this file
+        // since they're not fully implemented in index.js
+        if (interaction.isButton()) {
             const { client, guild } = interaction;
             const player = client.kazagumo.players.get(guild.id);
             
