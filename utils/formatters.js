@@ -1,28 +1,55 @@
 const { createEmbed } = require('./embeds');
 
+const { createCanvas, loadImage } = require('canvas');
+const path = require('path');
+
 module.exports = {
-    createMusicCard: (track, isPlaying = false) => {
-        const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
-        const title = isPlaying ? 'Now Playing' : 'Track';
-        const description = `**${track.title}**\n${track.author}\n\`${duration}\``;
+    createMusicCard: async (track, isPlaying = false) => {
+        const canvas = createCanvas(800, 200);
+        const ctx = canvas.getContext('2d');
 
-        let thumbnail = track.thumbnail;
-        if (thumbnail && thumbnail.includes('youtube.com')) {
-            if (thumbnail.includes('i.ytimg.com')) {
-                const videoId = thumbnail.match(/\/vi\/([a-zA-Z0-9_-]+)\//)?.[1];
-                if (videoId) {
-                    thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                }
-            } else {
-                thumbnail = thumbnail.replace(/\/(maxresdefault|sddefault|mqdefault|default)\.jpg/, '/hqdefault.jpg');
-            }
+        // Background
+        ctx.fillStyle = '#2f3136';
+        ctx.fillRect(0, 0, 800, 200);
+
+        try {
+            // Load and draw thumbnail
+            const thumbnail = await loadImage(track.thumbnail);
+            ctx.drawImage(thumbnail, 20, 20, 160, 160);
+
+            // Text styling
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Arial';
+
+            // Draw title (with truncation if needed)
+            let title = track.title;
+            if (title.length > 40) title = title.substring(0, 37) + '...';
+            ctx.fillText(title, 200, 60);
+
+            // Draw artist
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#b9bbbe';
+            ctx.fillText(track.author, 200, 100);
+
+            // Draw duration
+            const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
+            ctx.fillText(duration, 200, 140);
+
+            // Draw playing status
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(isPlaying ? 'Now Playing' : 'Track', 680, 40);
+
+            return canvas.toBuffer();
+        } catch (error) {
+            console.error('Error creating music card:', error);
+            // Fallback to embed if image creation fails
+            return createEmbed({
+                title: isPlaying ? 'Now Playing' : 'Track',
+                description: `**${track.title}**\n${track.author}\n\`${duration}\``,
+                thumbnail: track.thumbnail
+            });
         }
-
-        return createEmbed({
-            title: title,
-            description: description,
-            thumbnail: thumbnail
-        });
     },
 
     formatDuration: (ms) => {

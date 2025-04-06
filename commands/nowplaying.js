@@ -27,8 +27,13 @@ module.exports = {
             return interaction.reply({ embeds: [errorEmbed('There is no track currently playing!')], ephemeral: true });
         }
         
-        // Use the simplified music card format
-        const musicCard = createMusicCard(current, true);
+        // Generate music card image
+        const musicCard = await createMusicCard(current, true);
+        
+        // Check if response is buffer (image) or embed (fallback)
+        const reply = Buffer.isBuffer(musicCard) ? 
+            { files: [{ attachment: musicCard, name: 'nowplaying.png' }] } :
+            { embeds: [musicCard] };
         
         // Get position and create progress bar
         const position = player.position;
