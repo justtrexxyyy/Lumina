@@ -8,8 +8,8 @@ module.exports = {
      */
     createEmbed: (options = {}) => {
         return {
-            title: options.title || null,
-            description: options.description || null,
+            title: options.title || 'Music',
+            description: options.description || 'No description provided',
             fields: options.fields || [],
             color: parseInt((options.color || config.embedColor).replace('#', ''), 16),
             footer: options.footer ? {

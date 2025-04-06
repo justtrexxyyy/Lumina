@@ -75,7 +75,7 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
-    
+
     if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
     } else {
@@ -90,7 +90,7 @@ const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'
 for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
     const event = require(filePath);
-    
+
     if (event.once) {
         client.once(event.name, (...args) => event.execute(...args));
     } else {
@@ -118,7 +118,7 @@ shoukaku.on('close', (name, code, reason) => {
 shoukaku.on('disconnect', (name, players, moved) => {
     if (moved) return;
     players.map(player => player.connection.disconnect());
-    
+
     setTimeout(() => {
         try {
             shoukaku.reconnect();
@@ -130,12 +130,12 @@ shoukaku.on('disconnect', (name, players, moved) => {
 });
 shoukaku.on('error', (name, error) => {
     console.error(`Lavalink ${name} Error:`, error.message || 'Unknown error');
-    
+
     // Handle various error types with customized reconnection strategies
     if (error && error.message) {
         // Prepare for reconnection
         let reconnectDelay = 10000; // Default 10 seconds
-        
+
         if (error.message.includes('AbortError')) {
             console.log('Connection aborted, will try again shortly...');
             reconnectDelay = 5000; // Shorter delay for abort errors
@@ -146,7 +146,7 @@ shoukaku.on('error', (name, error) => {
             console.log('Transport error detected, reconnecting...');
             reconnectDelay = 7500; // Medium delay for transport issues
         }
-        
+
         // Schedule reconnection with the appropriate delay
         setTimeout(() => {
             try {
@@ -196,10 +196,10 @@ client.kazagumo.on('playerStart', async (player, track) => {
             // Use the simplified music card format
             const { createMusicCard } = require('./utils/formatters');
             const embed = createMusicCard(track, true);
-            
+
             // Add buttons and filter select menu for now playing message
             const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-            
+
             // Button row with essential controls
             const nowPlayingRow = new ActionRowBuilder()
                 .addComponents(
@@ -216,7 +216,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setLabel('Skip')
                         .setStyle(ButtonStyle.Secondary)
                 );
-                
+
             // Create a dropdown menu for filters
             const filtersSelectMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
@@ -263,11 +263,11 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         value: 'slowmode'
                     }
                 ]);
-            
+
             // Create filter dropdown row
             const filtersDropdownRow = new ActionRowBuilder()
                 .addComponents(filtersSelectMenu);
-            
+
             // Add additional control buttons
             const controlsRow = new ActionRowBuilder()
                 .addComponents(
@@ -280,22 +280,22 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setLabel('Stop')
                         .setStyle(ButtonStyle.Danger)
                 );
-            
+
             // Send the embed with controls and filter dropdown
             const message = await channel.send({ 
                 embeds: [embed],
                 components: [filtersDropdownRow, nowPlayingRow, controlsRow]
             });
-            
+
             // Store the message ID in the map
             client.nowPlayingMessages.set(player.guildId, { 
                 channelId: channel.id, 
                 messageId: message.id 
             });
-            
+
         } catch (error) {
             console.error('Error sending now playing message:', error);
-            
+
             // Simple fallback embed using the most basic format
             const { createEmbed } = require('./utils/embeds');
             const embed = createEmbed({
@@ -303,10 +303,10 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author} • ${track.isStream ? 'LIVE' : formatDuration(track.length)}`,
                 thumbnail: track.thumbnail
             });
-            
+
             // Create a simplified dropdown for fallback
             const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-            
+
             const fallbackFilterMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
                 .setPlaceholder('Select a filter')
@@ -332,7 +332,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         value: 'vaporwave'
                     }
                 ]);
-                
+
             const fallbackFilterRow = new ActionRowBuilder()
                 .addComponents(fallbackFilterMenu);
 
@@ -348,7 +348,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setLabel('Skip')
                         .setStyle(ButtonStyle.Secondary)
                 );
-                
+
             channel.send({ 
                 embeds: [embed],
                 components: [fallbackFilterRow, fallbackControlsRow]
@@ -366,7 +366,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
 client.kazagumo.on('playerEmpty', async (player) => {
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
-    
+
     // First, remove components from the now playing message if it exists
     try {
         const messageInfo = client.nowPlayingMessages.get(guildId);
@@ -387,7 +387,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
     } catch (error) {
         // Silent catch - no need to log
     }
-    
+
     // When player is empty, send a message with working buttons to inform users
     if (channel) {
         // Create buttons that work even with no active player
@@ -403,7 +403,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     .setLabel('Leave Channel')
                     .setStyle(ButtonStyle.Secondary)
             );
-            
+
         // Send a simple queue ended message with buttons
         try {
             const { createEmbed } = require('./utils/embeds');
@@ -411,7 +411,7 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 title: 'Queue Ended',
                 description: 'Use the buttons below or type `/play` to play more music!'
             });
-            
+
             await channel.send({
                 embeds: [queueEndedEmbed],
                 components: [actionRow]
@@ -420,50 +420,53 @@ client.kazagumo.on('playerEmpty', async (player) => {
             // Silent catch - no need to log
         }
     }
-    
+
     // Autoplay functionality
     if (client.autoplay && client.autoplay.has(guildId) && player.queue.previous) {
         try {
             // Get a random genre/mood to search for completely different tracks
             const genres = ['pop', 'rock', 'hip hop', 'dance', 'electronic', 'chill', 'top hits', 'popular', 'trending', 'new music', 'music mix'];
             const randomGenre = genres[Math.floor(Math.random() * genres.length)];
-            
+
             // Get the last played track (just for the requester)
             const lastTrack = player.queue.previous.length > 0 ? 
                 player.queue.previous[player.queue.previous.length - 1] : null;
-            
+
             const requester = lastTrack ? lastTrack.requester : null;
-            
+
             // Search for completely new tracks on YouTube Music using a random genre
             const result = await client.kazagumo.search(randomGenre, {
                 engine: 'youtube_music', // Use YouTube Music for autoplay
                 requester: requester
             });
-            
+
             if (result && result.tracks.length > 0) {
                 // Mix up the results to get more variety
                 const shuffledTracks = result.tracks.sort(() => Math.random() - 0.5);
-                
+
                 // Get completely different tracks - take 5 random ones 
                 const tracksToAdd = shuffledTracks.slice(0, 5);
                 player.queue.add(tracksToAdd);
-                
+
                 // Start playing if not already playing
                 if (!player.playing && !player.paused) {
                     await player.play();
                 }
-                
+
                 // Send a simple message that autoplay is continuing without mentioning track names
                 if (channel) {
                     const { createEmbed } = require('./utils/embeds');
                     const autoplayEmbed = createEmbed({
                         title: 'Autoplay',
-                        description: 'Music will continue playing automatically.'
+                        description: 'Music will continue playing automatically.',
+                        color: '#00ff00'
                     });
-                    
-                    await channel.send({ embeds: [autoplayEmbed] }).catch(() => {});
+
+                    await channel.send({ embeds: [autoplayEmbed] }).catch((error) => {
+                        console.error('Error sending autoplay message:', error.message);
+                    });
                 }
-                
+
                 // Return early since we're continuing playback
                 return;
             }
@@ -471,13 +474,13 @@ client.kazagumo.on('playerEmpty', async (player) => {
             // Handle error silently without logging to console
         }
     }
-    
+
     // Don't disconnect if 24/7 mode is enabled
     if (client.twentyFourSeven.has(guildId)) return;
-    
+
     if (channel) {
         // Set a timeout to destroy the player with no second message
-        
+
         // Set a timeout to destroy the player if no new songs are added AND the player is still empty
         const inactivityTimeout = setTimeout(() => {
             const currentPlayer = client.kazagumo.players.get(guildId);
@@ -486,20 +489,20 @@ client.kazagumo.on('playerEmpty', async (player) => {
                 (!currentPlayer.queue.current || currentPlayer.queue.isEmpty) && 
                 !currentPlayer.playing && 
                 !client.twentyFourSeven.has(guildId)) {
-                
+
                 currentPlayer.destroy();
                 const { createEmbed } = require('./utils/embeds');
                 const leaveEmbed = createEmbed({
                     title: 'Channel Left',
                     description: 'Left voice channel due to inactivity.'
                 });
-                
+
                 channel.send({ 
                     embeds: [leaveEmbed]
                 }).catch(() => {});
             }
         }, 180000); // Extended to 3 minutes for better user experience
-        
+
         // Store the timeout so we can clear it if playback resumes
         if (!client.inactivityTimeouts) client.inactivityTimeouts = new Map();
         client.inactivityTimeouts.set(guildId, inactivityTimeout);
@@ -511,13 +514,13 @@ client.kazagumo.on('playerException', (player, error) => {
     if (error && error.message && error.message.includes('destroyed')) {
         console.error('Critical player exception:', error.message);
     }
-    
+
     const channel = client.channels.cache.get(player.textId);
-    
+
     // Determine if we need to recover the player
     let needsRecovery = false;
     let errorMessage = `**An error occurred while playing**: ${error.message || 'Unknown error'}`;
-    
+
     if (error.message) {
         if (error.message.includes('destroyed') || error.message.includes('not found')) {
             // Player was destroyed or not found
@@ -533,7 +536,7 @@ client.kazagumo.on('playerException', (player, error) => {
             needsRecovery = true;
         }
     }
-    
+
     if (channel) {
         const { createEmbed } = require('./utils/embeds');
         const errorEmbed = createEmbed({
@@ -541,10 +544,10 @@ client.kazagumo.on('playerException', (player, error) => {
             description: errorMessage.replace(/\*\*/g, ''),
             color: 0xff0000 // Red color for errors
         });
-        
+
         channel.send({ embeds: [errorEmbed] }).catch(console.error);
     }
-    
+
     // Try to recover the player if needed
     if (needsRecovery && player) {
         try {
@@ -568,12 +571,12 @@ client.kazagumo.on('playerError', (player, error) => {
     if (error && error.message && (error.message.includes('No available nodes') || error.message.includes('destroyed'))) {
         console.error('Critical player error:', error.message);
     }
-    
+
     const channel = client.channels.cache.get(player.textId);
-    
+
     // Build a more detailed error message
     let errorMessage = `**Player Error**: ${error.message || 'Unknown error'}`;
-    
+
     if (error.message) {
         if (error.message.includes('No available nodes')) {
             errorMessage = `**Connection Error**: Cannot connect to the music server. Please try again later.`;
@@ -583,7 +586,7 @@ client.kazagumo.on('playerError', (player, error) => {
             errorMessage = `**Track Error**: Could not retrieve track information. The source may be unavailable.`;
         }
     }
-    
+
     if (channel) {
         const { createEmbed } = require('./utils/embeds');
         const errorEmbed = createEmbed({
@@ -591,29 +594,29 @@ client.kazagumo.on('playerError', (player, error) => {
             description: errorMessage.replace(/\*\*/g, ''),
             color: 0xff0000 // Red color for errors
         });
-        
+
         channel.send({ embeds: [errorEmbed] }).catch(() => {});
     }
-    
+
     // Attempt to reconnect if needed
     if (error.message && 
         (error.message.includes('No available nodes') || 
          error.message.includes('Connection') || 
          error.message.includes('WebSocket'))) {
-        
+
         setTimeout(() => {
             try {
                 // Check if Lavalink nodes are available
                 const nodesAvailable = shoukaku.nodes.filter(node => node.state === 1);
-                
+
                 if (nodesAvailable.length > 0) {
                     const guildId = player.guildId;
                     const voiceId = player.voiceId;
                     const textId = player.textId;
-                    
+
                     // Destroy current player
                     player.destroy().catch(() => {});
-                    
+
                     // Create a new player after a short delay
                     setTimeout(() => {
                         if (voiceId && guildId) {
@@ -624,14 +627,14 @@ client.kazagumo.on('playerError', (player, error) => {
                                     textId: textId,
                                     deaf: true
                                 });
-                                
+
                                 if (channel) {
                                     const { createEmbed } = require('./utils/embeds');
                                     const reconnectEmbed = createEmbed({
                                         title: 'Reconnected',
                                         description: 'Successfully reconnected to the voice channel.'
                                     });
-                                    
+
                                     channel.send({ embeds: [reconnectEmbed] }).catch(() => {});
                                 }
                             } catch (e) {
@@ -653,7 +656,7 @@ client.on('interactionCreate', async (interaction) => {
     // Handle command not found errors gracefully
     if (interaction.isCommand()) {
         const command = client.commands.get(interaction.commandName);
-        
+
         if (!command) {
             const { createEmbed } = require('./utils/embeds');
             return interaction.reply({
@@ -680,28 +683,28 @@ Here are the main commands you can use:
 • \`/stop\` - Stop playback and clear queue
 • \`/247\` - Toggle 24/7 mode
 • \`/help\` - Show detailed help`;
-            
+
             return interaction.reply({ content: helpText, ephemeral: true });
         }
-        
+
         if (interaction.customId === 'play') {
             return interaction.reply({ 
                 content: 'Please use the `/play` command followed by a song name or URL to add a track to the queue.', 
                 ephemeral: true 
             });
         }
-        
+
         if (interaction.customId === '247toggle') {
             const guild = interaction.guild;
             const member = interaction.member;
-            
+
             if (!member.voice.channel) {
                 return interaction.reply({ 
                     content: 'You must be in a voice channel to toggle 24/7 mode!', 
                     ephemeral: true 
                 });
             }
-            
+
             // Toggle 24/7 mode
             if (client.twentyFourSeven.has(guild.id)) {
                 client.twentyFourSeven.delete(guild.id);
@@ -717,18 +720,18 @@ Here are the main commands you can use:
                 });
             }
         }
-        
+
         if (interaction.customId === 'leave') {
             const guild = interaction.guild;
             const player = client.kazagumo.players.get(guild.id);
-            
+
             if (!player) {
                 return interaction.reply({ 
                     content: 'I am not in a voice channel!', 
                     ephemeral: true 
                 });
             }
-            
+
             // Force the player to disconnect
             player.destroy();
             return interaction.reply({ 
@@ -736,13 +739,13 @@ Here are the main commands you can use:
                 ephemeral: true 
             });
         }
-        
+
         // Handle media control buttons
         if (['pauseresume', 'pause', 'resume', 'skip', 'stop', 'queue', 'shuffle', 'loop', 'replay'].includes(interaction.customId)) {
             const guild = interaction.guild;
             const member = interaction.member;
             const player = client.kazagumo.players.get(guild.id);
-            
+
             // Check if player exists
             if (!player) {
                 return interaction.reply({ 
@@ -750,7 +753,7 @@ Here are the main commands you can use:
                     ephemeral: true 
                 });
             }
-            
+
             // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
                 return interaction.reply({ 
@@ -758,7 +761,7 @@ Here are the main commands you can use:
                     ephemeral: true 
                 });
             }
-            
+
             try {
                 switch (interaction.customId) {
                     case 'pauseresume':
@@ -769,7 +772,7 @@ Here are the main commands you can use:
                             content: player.paused ? 'Paused the playback!' : 'Resumed the playback!', 
                             ephemeral: true 
                         });
-                        
+
                     case 'resume':
                         // Resume playback
                         player.pause(false);
@@ -777,7 +780,7 @@ Here are the main commands you can use:
                             content: 'Resumed the playback!', 
                             ephemeral: true 
                         });
-                        
+
                     case 'skip':
                         // Skip current track
                         if (player.queue.length === 0 && !player.queue.current) {
@@ -791,7 +794,7 @@ Here are the main commands you can use:
                             content: 'Skipped to the next track!', 
                             ephemeral: true 
                         });
-                        
+
                     case 'stop':
                         // Stop playback and clear queue
                         player.queue.clear();
@@ -800,7 +803,7 @@ Here are the main commands you can use:
                             content: 'Stopped the playback and cleared the queue!', 
                             ephemeral: true 
                         });
-                        
+
                     case 'queue':
                         // Show queue - find the queue command and execute it
                         const queueCommand = client.commands.get('queue');
@@ -813,7 +816,7 @@ Here are the main commands you can use:
                             });
                         }
                         break;
-                        
+
                     case 'shuffle':
                         // Shuffle the queue
                         if (player.queue.length < 2) {
@@ -827,25 +830,25 @@ Here are the main commands you can use:
                             content: 'Shuffled the queue!', 
                             ephemeral: true 
                         });
-                        
+
                     case 'loop':
                         // Toggle loop mode
                         const modes = ['none', 'track', 'queue'];
                         const currentIndex = modes.indexOf(player.loop);
                         const nextIndex = (currentIndex + 1) % modes.length;
                         player.setLoop(modes[nextIndex]);
-                        
+
                         const modeMessages = {
                             'none': 'Loop mode disabled!',
                             'track': 'Now looping the current track!',
                             'queue': 'Now looping the entire queue!'
                         };
-                        
+
                         return interaction.reply({ 
                             content: modeMessages[modes[nextIndex]], 
                             ephemeral: true 
                         });
-                        
+
                     case 'replay':
                         // Replay the current track
                         if (!player.queue.current) {
@@ -854,14 +857,14 @@ Here are the main commands you can use:
                                 ephemeral: true 
                             });
                         }
-                        
+
                         // Record the current track to replay it
                         const currentTrack = player.queue.current;
-                        
+
                         // Skip the current track and immediately add it back to the beginning of the queue
                         player.queue.unshift(currentTrack);
                         player.skip();
-                        
+
                         return interaction.reply({ 
                             content: 'Replaying the current track!', 
                             ephemeral: true 
@@ -875,23 +878,23 @@ Here are the main commands you can use:
                 });
             }
         }
-        
+
         // Handle filter button interactions
         if (interaction.customId.startsWith('filter_')) {
             const filterName = interaction.customId.replace('filter_', '');
             const guild = interaction.guild;
             const member = interaction.member;
-            
+
             // Get the player instance for this server
             const player = client.kazagumo.players.get(guild.id);
-            
+
             if (!player) {
                 return interaction.reply({ 
                     content: 'There is no active player in this server!', 
                     ephemeral: true 
                 });
             }
-            
+
             // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
                 return interaction.reply({ 
@@ -899,11 +902,11 @@ Here are the main commands you can use:
                     ephemeral: true 
                 });
             }
-            
+
             try {
                 // Import filter utilities
                 const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
-                
+
                 // Handle 'none' selection (clear filters)
                 if (filterName === 'none') {
                     await clearFilters(player);
@@ -914,7 +917,7 @@ Here are the main commands you can use:
                 } else {
                     // Apply the selected filter
                     const success = await applyFilter(player, filterName);
-                    
+
                     if (success) {
                         await interaction.reply({
                             content: `Applied the ${getFilterDisplayName(filterName)} filter!`,
@@ -926,7 +929,7 @@ Here are the main commands you can use:
                             ephemeral: true
                         });
                     }
-                }
+                }                }
             } catch (error) {
                 console.error('Error applying filter:', error);
                 await interaction.reply({
@@ -939,23 +942,23 @@ Here are the main commands you can use:
     } else {
         // Only handle StringSelectMenu interactions if not a button
         if (!interaction.isStringSelectMenu()) return;
-        
+
         // Handle filter select menu (legacy support)
         if (interaction.customId === 'filter_select') {
             const selectedFilter = interaction.values[0];
             const guild = interaction.guild;
             const member = interaction.member;
-            
+
             // Get the player instance for this server
             const player = client.kazagumo.players.get(guild.id);
-            
+
             if (!player) {
                 return interaction.reply({ 
                     content: 'There is no active player in this server!', 
                     ephemeral: true 
                 });
             }
-            
+
             // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
                 return interaction.reply({ 
@@ -963,11 +966,11 @@ Here are the main commands you can use:
                     ephemeral: true 
                 });
             }
-            
+
             try {
                 // Import filter utilities
                 const { applyFilter, clearFilters, getFilterDisplayName } = require('./utils/filters');
-                
+
                 // Handle 'none' selection (clear filters)
                 if (selectedFilter === 'none') {
                     await clearFilters(player);
@@ -978,7 +981,7 @@ Here are the main commands you can use:
                 } else {
                     // Apply the selected filter
                     const success = await applyFilter(player, selectedFilter);
-                    
+
                     if (success) {
                         await interaction.reply({
                             content: `Applied the ${getFilterDisplayName(selectedFilter)} filter!`,
@@ -1021,7 +1024,7 @@ client.login(process.env.DISCORD_TOKEN)
     .catch(error => {
         clearTimeout(loginTimeout); // Clear the timeout if login fails with an error
         console.error('Failed to log in to Discord:', error.message);
-        
+
         if (error.message.includes('token')) {
             console.error('DISCORD_TOKEN is invalid. Please check your environment variables.');
         } else if (error.message.includes('network') || error.message.includes('connect')) {
@@ -1029,6 +1032,6 @@ client.login(process.env.DISCORD_TOKEN)
         } else {
             console.error('Unknown error occurred during login. Please try again later.');
         }
-        
+
         process.exit(1); // Exit with error code
     });
