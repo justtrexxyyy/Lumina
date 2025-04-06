@@ -650,6 +650,23 @@ client.kazagumo.on('playerError', (player, error) => {
 // Login to Discord
 // Add interactionCreate handler for buttons and filter buttons
 client.on('interactionCreate', async (interaction) => {
+    // Handle command not found errors gracefully
+    if (interaction.isCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        
+        if (!command) {
+            const { createEmbed } = require('./utils/embeds');
+            return interaction.reply({
+                embeds: [createEmbed({
+                    title: 'Command Not Found',
+                    description: `The command \`${interaction.commandName}\` was not found. Use \`/help\` to see available commands.`,
+                    color: '#ff0000'
+                })],
+                ephemeral: true
+            });
+        }
+    }
+
     // Handle various button interactions
     if (interaction.isButton()) {
         // Handle queue end buttons
