@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, AttachmentBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { Shoukaku, Connectors } = require('shoukaku');
@@ -184,6 +184,8 @@ client.kazagumo.on('playerEnd', async (player) => {
 });
 
 client.kazagumo.on('playerStart', async (player, track) => {
+    console.log(`Player started in guild ${player.guildId} - Playing: ${track.title}`);
+    
     // Clear any inactivity timeout when playback starts
     if (client.inactivityTimeouts && client.inactivityTimeouts.has(player.guildId)) {
         clearTimeout(client.inactivityTimeouts.get(player.guildId));
@@ -192,13 +194,47 @@ client.kazagumo.on('playerStart', async (player, track) => {
 
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
+        console.log(`Found channel for now playing message: ${channel.name} (${channel.id})`);
         try {
-            // Use the simplified music card format
-            const { createMusicCard } = require('./utils/formatters');
-            const embed = createMusicCard(track, true);
+            // Use the music card image for Now Playing
+            const { createMusicCard, formatDuration } = require('./utils/formatters');
+            const { createEmbed } = require('./utils/embeds');
+            
+            console.log("Creating music card for track:", track.title);
+            // Generate music card with track info
+            const musicCard = await createMusicCard(track, true);
+            console.log("Music card created, type:", Buffer.isBuffer(musicCard) ? "Buffer" : "Embed fallback");
+            
+            // Prepare message content based on whether we got an image or fallback embed
+            let messageContent = {};
+            
+            if (Buffer.isBuffer(musicCard)) {
+                // For the image buffer, we'll create an attachment using AttachmentBuilder
+                const attachment = new AttachmentBuilder(musicCard, { name: 'nowplaying.png' });
+                
+                // Create an embed with the track name and requester
+                const nowPlayingEmbed = createEmbed({
+                    title: 'Now Playing',
+                    description: `**[${track.title}](${config.supportServer})**\n<@${track.requester.id}>`,
+                    color: '#87CEEB', // Sky blue to match the card
+                });
+                
+                // Explicitly set the image
+                nowPlayingEmbed.setImage('attachment://nowplaying.png');
+                
+                messageContent = {
+                    embeds: [nowPlayingEmbed],
+                    files: [attachment]
+                };
+            } else {
+                // Fallback to the embed if image creation failed
+                messageContent = {
+                    embeds: [musicCard]
+                };
+            }
 
             // Add buttons and filter select menu for now playing message
-            const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 
             // Button row with essential controls
             const nowPlayingRow = new ActionRowBuilder()
@@ -281,9 +317,9 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         .setStyle(ButtonStyle.Danger)
                 );
 
-            // Send the embed with controls and filter dropdown
-            const message = await channel.send({ 
-                embeds: [embed],
+            // Send the message with music card and controls
+            const message = await channel.send({
+                ...messageContent,
                 components: [filtersDropdownRow, nowPlayingRow, controlsRow]
             });
 
@@ -295,17 +331,20 @@ client.kazagumo.on('playerStart', async (player, track) => {
 
         } catch (error) {
             console.error('Error sending now playing message:', error);
-
-            // Simple fallback embed using the most basic format
+            console.error('Error stack:', error.stack);
+            console.log('Attempting to create fallback message without music card...');
+            
+            // Simple fallback embed using just the track name
             const { createEmbed } = require('./utils/embeds');
+            
             const embed = createEmbed({
                 title: `Now Playing`,
-                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**\n${track.author} • ${track.isStream ? 'LIVE' : formatDuration(track.length)}`,
-                thumbnail: track.thumbnail
+                description: `**[${track.title}](${process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy'})**`,
+                color: '#87CEEB'
             });
 
             // Create a simplified dropdown for fallback
-            const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } = require('discord.js');
 
             const fallbackFilterMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
@@ -453,18 +492,51 @@ client.kazagumo.on('playerEmpty', async (player) => {
                     await player.play();
                 }
 
-                // Send a simple message that autoplay is continuing without mentioning track names
+                // Send an autoplay message with information about the upcoming tracks
                 if (channel) {
-                    const { createEmbed } = require('./utils/embeds');
-                    const autoplayEmbed = createEmbed({
-                        title: 'Autoplay',
-                        description: 'Music will continue playing automatically.',
-                        color: '#00ff00'
-                    });
-
-                    await channel.send({ embeds: [autoplayEmbed] }).catch((error) => {
+                    try {
+                        // Get the next track to play (first in queue)
+                        const nextTrack = player.queue.tracks[0];
+                        
+                        if (nextTrack) {
+                            const { createEmbed } = require('./utils/embeds');
+                            
+                            // Create a simple embed for autoplay
+                            const autoplayEmbed = createEmbed({
+                                title: 'Autoplay Continues',
+                                description: `Added tracks to keep the music going.\n\n**Next:** **[${nextTrack.title}](${config.supportServer})**`,
+                                color: '#87CEEB'
+                            });
+                            
+                            const messageContent = {
+                                embeds: [autoplayEmbed]
+                            };
+                            
+                            await channel.send(messageContent);
+                        } else {
+                            // Fallback if no next track is available
+                            const { createEmbed } = require('./utils/embeds');
+                            const autoplayEmbed = createEmbed({
+                                title: 'Autoplay',
+                                description: 'Music will continue playing automatically.',
+                                color: '#87CEEB'
+                            });
+                            
+                            await channel.send({ embeds: [autoplayEmbed] });
+                        }
+                    } catch (error) {
                         console.error('Error sending autoplay message:', error.message);
-                    });
+                        
+                        // Simple fallback in case of error
+                        const { createEmbed } = require('./utils/embeds');
+                        const fallbackEmbed = createEmbed({
+                            title: 'Autoplay',
+                            description: 'Music will continue playing automatically.',
+                            color: '#87CEEB'
+                        });
+                        
+                        await channel.send({ embeds: [fallbackEmbed] }).catch(() => {});
+                    }
                 }
 
                 // Return early since we're continuing playback
@@ -738,6 +810,72 @@ Here are the main commands you can use:
                 content: 'Left the voice channel.', 
                 ephemeral: true 
             });
+        }
+        
+        // Music control buttons
+        if (['pauseresume', 'skip', 'replay', 'shuffle', 'stop'].includes(interaction.customId)) {
+            const guild = interaction.guild;
+            const player = client.kazagumo.players.get(guild.id);
+            const member = interaction.member;
+            
+            if (!player) {
+                return interaction.reply({ 
+                    content: 'There is no active player in this server!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Check if user is in the same voice channel
+            if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+                return interaction.reply({ 
+                    content: 'You must be in the same voice channel as the bot to use this!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Handle each button type
+            switch (interaction.customId) {
+                case 'pauseresume':
+                    player.pause(!player.paused);
+                    return interaction.reply({ 
+                        content: player.paused ? 'Paused the music!' : 'Resumed the music!', 
+                        ephemeral: true 
+                    });
+                    
+                case 'skip':
+                    player.skip();
+                    return interaction.reply({ 
+                        content: 'Skipped to the next track!', 
+                        ephemeral: true 
+                    });
+                    
+                case 'replay':
+                    await player.seek(0);
+                    return interaction.reply({ 
+                        content: 'Replaying current track from the beginning!', 
+                        ephemeral: true 
+                    });
+                    
+                case 'shuffle':
+                    if (player.queue.length < 2) {
+                        return interaction.reply({ 
+                            content: 'Need at least 2 tracks in the queue to shuffle!', 
+                            ephemeral: true 
+                        });
+                    }
+                    player.queue.shuffle();
+                    return interaction.reply({ 
+                        content: 'Queue has been shuffled!', 
+                        ephemeral: true 
+                    });
+                    
+                case 'stop':
+                    player.destroy();
+                    return interaction.reply({ 
+                        content: 'Stopped playback and cleared the queue!', 
+                        ephemeral: true 
+                    });
+            }
         }
     } else if (interaction.isStringSelectMenu()) {
         // Handle filter select menu (legacy support)

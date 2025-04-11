@@ -108,19 +108,20 @@ module.exports = {
                 const track = result.tracks[0];
                 player.queue.add(track);
                 
-                // Create a simple added to queue embed
-                const { createEmbed } = require('../utils/embeds');
-                const queueEmbed = createEmbed({
+                // Create a simple embed for the track
+                const trackEmbed = createEmbed({
                     title: 'Added to Queue',
-                    description: `[${track.title}](${config.supportServer})${track.isStream ? ' (LIVE)' : ''}`,
-                    // No thumbnail for a cleaner look
+                    description: `**[${track.title}](${config.supportServer})**`,
+                    color: '#f47fff'
                 });
                 
+                const replyContent = {
+                    embeds: [trackEmbed],
+                    components: []
+                };
+                
                 interactionHandled = true;
-                await interaction.editReply({ 
-                    embeds: [queueEmbed], 
-                    components: [] 
-                });
+                await interaction.editReply(replyContent);
             }
             
             // Start playback if not already playing

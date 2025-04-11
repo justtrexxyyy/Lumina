@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionResponse } = require('discord.js');
 const { createEmbed, errorEmbed, successEmbed } = require('../utils/embeds');
 const config = require('../config');
 
@@ -9,6 +9,33 @@ function createVolumeBar(volume) {
     const emptyBars = maxBars - filledBars;
     
     return '▓'.repeat(filledBars) + '░'.repeat(emptyBars);
+}
+
+// Helper function to safely respond to interactions
+async function safeReply(interaction, options) {
+    try {
+        // Use flags.ephemeral instead of ephemeral to avoid deprecation warnings
+        if (options.ephemeral) {
+            options.flags = { ephemeral: true };
+            delete options.ephemeral;
+        }
+        
+        // Only attempt to reply if the interaction hasn't been replied to
+        if (interaction.replied || interaction.deferred) {
+            return await interaction.followUp(options).catch(err => {
+                console.error(`Failed to followUp: ${err.message}`);
+                return null;
+            });
+        } else {
+            return await interaction.reply(options).catch(err => {
+                console.error(`Failed to reply: ${err.message}`);
+                return null;
+            });
+        }
+    } catch (error) {
+        console.error(`Error in safeReply: ${error.message}`);
+        return null;
+    }
 }
 
 module.exports = {
@@ -59,32 +86,38 @@ module.exports = {
         // Re-enabled button interactions in this file
         // since they're not fully implemented in index.js
         if (interaction.isButton()) {
+            console.log(`Button interaction detected: ${interaction.customId}`);
             const { client, guild } = interaction;
             const player = client.kazagumo.players.get(guild.id);
             
             if (!player) {
-                try {
-                    await interaction.reply({ 
+                // Handle special case for buttons that don't need an active player
+                if (interaction.customId === 'play' || interaction.customId === 'help' || interaction.customId === '247toggle' || interaction.customId === 'leave') {
+                    // These buttons will be handled in their respective switch cases
+                } else {
+                    // Use safeReply for safer interaction handling
+                    await safeReply(interaction, { 
                         content: 'No active player found! Start playback with the /play command.',
-                        ephemeral: true 
+                        ephemeral: true
                     });
-                } catch (error) {
-                    console.error('Error replying to no player found:', error);
+                    return;
                 }
                 return;
             }
             
             // Check if user is in the same voice channel
             const member = interaction.member;
-            if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-                try {
-                    await interaction.reply({ 
-                        content: 'You must be in the same voice channel to use these controls!',
-                        ephemeral: true 
-                    });
-                } catch (error) {
-                    console.error('Error replying to voice channel check:', error);
-                }
+            
+            // Skip voice channel check for buttons that can be used from anywhere
+            if (interaction.customId === 'help' || interaction.customId === 'play') {
+                // These buttons don't require voice channel check
+            } 
+            // Check if player needs voice channel
+            else if (player && (!member.voice.channel || member.voice.channel.id !== player.voiceId)) {
+                await safeReply(interaction, { 
+                    content: 'You must be in the same voice channel to use these controls!',
+                    ephemeral: true
+                });
                 return;
             }
             
@@ -96,11 +129,10 @@ module.exports = {
                             const isPaused = player.paused;
                             player.pause(!isPaused);
                             
-                            await interaction.reply({ 
+                            // Use safeReply to handle the interaction safely
+                            await safeReply(interaction, { 
                                 content: isPaused ? 'Resumed the playback!' : 'Paused the playback!',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send pause/resume response:', error);
                             });
                         } catch (error) {
                             console.error('Error in pause/resume button:', error);

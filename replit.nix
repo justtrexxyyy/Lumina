@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.fontconfig
     pkgs.librsvg
     pkgs.giflib
     pkgs.libjpeg

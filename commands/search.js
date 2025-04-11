@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const { formatDuration, createMusicCard } = require('../utils/formatters');
+const config = require('../config');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -159,19 +160,20 @@ module.exports = {
                         await player.play();
                     }
                     
-                    // Create a simple added to queue embed
-                    const { createEmbed } = require('../utils/embeds');
-                    const queueEmbed = createEmbed({
+                    // Create a simple embed for the selected track
+                    const trackEmbed = createEmbed({
                         title: 'Added to Queue',
-                        description: `[${selectedTrack.title}](${config.supportServer})${selectedTrack.isStream ? ' (LIVE)' : ''}`,
-                        // No thumbnail for a cleaner look
+                        description: `**[${selectedTrack.title}](${config.supportServer})**`,
+                        color: '#f47fff'
                     });
                     
-                    await i.update({ 
-                        content: '', 
-                        embeds: [queueEmbed], 
-                        components: [] 
-                    });
+                    const replyContent = {
+                        content: '',
+                        embeds: [trackEmbed],
+                        components: []
+                    };
+                    
+                    await i.update(replyContent);
                 } catch (error) {
                     console.error('Error playing selected track:', error);
                     await i.update({ 
