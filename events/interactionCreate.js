@@ -1,6 +1,7 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionResponse } = require('discord.js');
 const { createEmbed, errorEmbed, successEmbed } = require('../utils/embeds');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 // Helper function to create volume bar for volume buttons
 function createVolumeBar(volume) {
@@ -22,18 +23,12 @@ async function safeReply(interaction, options) {
         
         // Only attempt to reply if the interaction hasn't been replied to
         if (interaction.replied || interaction.deferred) {
-            return await interaction.followUp(options).catch(err => {
-                console.error(`Failed to followUp: ${err.message}`);
-                return null;
-            });
+            return await interaction.followUp(options).catch(() => null);
         } else {
-            return await interaction.reply(options).catch(err => {
-                console.error(`Failed to reply: ${err.message}`);
-                return null;
-            });
+            return await interaction.reply(options).catch(() => null);
         }
     } catch (error) {
-        console.error(`Error in safeReply: ${error.message}`);
+        // Silent error handling
         return null;
     }
 }
@@ -46,14 +41,39 @@ module.exports = {
             const command = interaction.client.commands.get(interaction.commandName);
 
             if (!command) {
-                console.error(`No command matching ${interaction.commandName} was found.`);
+                // Silent handling for unknown commands
                 return;
             }
 
             try {
+                // Log command usage to webhook
+                let commandArgs = '';
+                if (interaction.options && interaction.options.data && interaction.options.data.length > 0) {
+                    commandArgs = interaction.options.data.map(option => {
+                        if (option.name === 'query' || option.name === 'song') {
+                            return `${option.name}: "${option.value}"`;
+                        }
+                        return `${option.name}: ${option.value}`;
+                    }).join(', ');
+                }
+                logger.command(interaction, interaction.commandName, commandArgs);
+                
+                // Execute the command
                 await command.execute(interaction);
             } catch (error) {
-                console.error(`Error executing command ${interaction.commandName}:`, error);
+                // Log the error to the webhook
+                try {
+                    logger.error(
+                        `Command /${interaction.commandName}`, 
+                        error,
+                        [
+                            { name: 'User', value: `${interaction.user.tag} (${interaction.user.id})`, inline: true },
+                            { name: 'Guild', value: `${interaction.guild ? interaction.guild.name : 'DM'} (${interaction.guild ? interaction.guild.id : 'N/A'})`, inline: true }
+                        ]
+                    );
+                } catch (logError) {
+                    // Silent error handling for logger
+                }
                 
                 // Only handle the error if the interaction is still valid and hasn't timed out
                 try {
@@ -64,21 +84,20 @@ module.exports = {
                         await interaction.followUp({ 
                             content: errorMessage,
                             ephemeral: true 
-                        }).catch(e => console.error('Could not follow up with error:', e));
+                        }).catch(() => {});
                     } else if (interaction.deferred) {
                         await interaction.editReply({ 
                             content: errorMessage,
                             ephemeral: true 
-                        }).catch(e => console.error('Could not edit reply with error:', e));
+                        }).catch(() => {});
                     } else {
                         await interaction.reply({ 
                             content: errorMessage,
                             ephemeral: true 
-                        }).catch(e => console.error('Could not reply with error:', e));
+                        }).catch(() => {});
                     }
                 } catch (followUpError) {
-                    console.error('Error sending error response:', followUpError);
-                    // We can't do anything more if this fails
+                    // Silent error handling - can't do anything more if this fails
                 }
             }
         }
@@ -86,7 +105,14 @@ module.exports = {
         // Re-enabled button interactions in this file
         // since they're not fully implemented in index.js
         if (interaction.isButton()) {
-            console.log(`Button interaction detected: ${interaction.customId}`);
+            // Log button interaction
+            try {
+                logger.command(interaction, `Button: ${interaction.customId}`, '');
+            } catch (error) {
+                // Silent error for logger
+            }
+            
+            // Handle button interactions silently
             const { client, guild } = interaction;
             const player = client.kazagumo.players.get(guild.id);
             
@@ -135,8 +161,7 @@ module.exports = {
                                 ephemeral: true 
                             });
                         } catch (error) {
-                            console.error('Error in pause/resume button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling - no console logs
                         }
                         break;
                         
@@ -147,12 +172,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: 'Replaying current track from the beginning!',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send replay response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in replay button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -163,12 +185,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: 'Paused the playback!',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send pause response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in pause button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -178,12 +197,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: 'Resumed the playback!',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send resume response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in resume button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -193,12 +209,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: 'Skipped to the next track!',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send skip response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in skip button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -210,12 +223,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: 'Stopped playback and cleared the queue!',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send stop response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in stop button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -228,9 +238,7 @@ module.exports = {
                                 await interaction.reply({
                                     content: 'There are no tracks in the queue',
                                     ephemeral: true
-                                }).catch(error => {
-                                    console.error('Failed to send empty queue response:', error);
-                                });
+                                }).catch(() => {});
                                 break;
                             }
                             
@@ -250,12 +258,9 @@ module.exports = {
                             await interaction.reply({
                                 content: `**Queue - ${queue.length} track(s)**\n\n${description}`,
                                 ephemeral: true
-                            }).catch(error => {
-                                console.error('Failed to send queue response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error handling queue button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -281,12 +286,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: `Loop mode set to: ${modeNames[nextMode]}`,
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send loop response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in loop button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -296,21 +298,16 @@ module.exports = {
                                 await interaction.reply({
                                     content: 'Need at least 2 tracks in the queue to shuffle!',
                                     ephemeral: true
-                                }).catch(error => {
-                                    console.error('Failed to send insufficient tracks message:', error);
-                                });
+                                }).catch(() => {});
                             } else {
                                 player.queue.shuffle();
                                 await interaction.reply({ 
                                     content: 'Queue has been shuffled!',
                                     ephemeral: true 
-                                }).catch(error => {
-                                    console.error('Failed to send shuffle success message:', error);
-                                });
+                                }).catch(() => {});
                             }
                         } catch (error) {
-                            console.error('Error in shuffle button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -327,12 +324,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: `Volume set to ${newVolume}% ${volumeBar}`,
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send volume_down response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in volume_down button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -349,15 +343,11 @@ module.exports = {
                             await interaction.reply({ 
                                 content: `Volume set to ${newVolume}% ${volumeBar}`,
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send volume_up response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in volume_up button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
-                        
                         
                     case 'replay':
                         try {
@@ -367,9 +357,7 @@ module.exports = {
                                 await interaction.reply({
                                     content: 'No track is currently playing!',
                                     ephemeral: true
-                                }).catch(error => {
-                                    console.error('Failed to send no track response:', error);
-                                });
+                                }).catch(() => {});
                                 break;
                             }
                             
@@ -379,12 +367,9 @@ module.exports = {
                             await interaction.reply({
                                 content: `Replaying track: **${currentTrack.title}**`,
                                 ephemeral: true
-                            }).catch(error => {
-                                console.error('Failed to send replay response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in replay button:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -393,12 +378,9 @@ module.exports = {
                             await interaction.reply({ 
                                 content: 'Unknown button action',
                                 ephemeral: true 
-                            }).catch(error => {
-                                console.error('Failed to send unknown button response:', error);
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in default button case:', error);
-                            // Don't attempt to reply if there's an error
+                            // Silent error handling
                         }
                         break;
                         
@@ -410,9 +392,9 @@ module.exports = {
                             await interaction.reply({
                                 content: 'Please use the `/play` command to search for and play music!',
                                 ephemeral: true
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in play_again button:', error);
+                            // Silent error handling
                         }
                         break;
                         
@@ -425,80 +407,140 @@ module.exports = {
                                 await interaction.reply({
                                     content: 'Left the voice channel and cleared the queue!',
                                     ephemeral: true
-                                });
+                                }).catch(() => {});
                             } else {
                                 // No player, so just send a message
                                 await interaction.reply({
-                                    content: 'I\'m not currently in a voice channel.',
+                                    content: 'I am not in a voice channel!',
                                     ephemeral: true
-                                });
+                                }).catch(() => {});
                             }
                         } catch (error) {
-                            console.error('Error in leave button:', error);
+                            // Silent error handling
                         }
                         break;
                         
                     case '247toggle':
                         try {
-                            // Toggle 24/7 mode
-                            if (!client.twentyFourSeven) {
-                                client.twentyFourSeven = new Set();
+                            if (!member.voice.channel) {
+                                await interaction.reply({
+                                    content: 'You must be in a voice channel to toggle 24/7 mode!',
+                                    ephemeral: true
+                                }).catch(() => {});
+                                break;
                             }
                             
-                            const guildId = guild.id;
-                            const has247 = client.twentyFourSeven.has(guildId);
-                            
-                            if (has247) {
-                                client.twentyFourSeven.delete(guildId);
+                            // Toggle 24/7 mode
+                            if (client.twentyFourSeven.has(guild.id)) {
+                                client.twentyFourSeven.delete(guild.id);
                                 await interaction.reply({
-                                    content: '24/7 mode disabled. I will leave the voice channel when the queue ends.',
+                                    content: '24/7 mode has been disabled. I will disconnect after inactivity.',
                                     ephemeral: true
-                                });
+                                }).catch(() => {});
                             } else {
-                                client.twentyFourSeven.add(guildId);
+                                client.twentyFourSeven.set(guild.id, member.voice.channel.id);
                                 await interaction.reply({
-                                    content: '24/7 mode enabled. I will stay in the voice channel even when the queue ends.',
+                                    content: '24/7 mode has been enabled. I will stay in the voice channel indefinitely.',
                                     ephemeral: true
-                                });
+                                }).catch(() => {});
                             }
                         } catch (error) {
-                            console.error('Error in 247toggle button:', error);
+                            // Silent error handling
                         }
                         break;
-                    
+                        
                     case 'help':
                         try {
-                            // Send a simple help message with common commands
-                            const helpEmbed = createEmbed({
-                                title: 'Quick Help Guide',
-                                description: 'Here are some common commands to get you started:',
-                                fields: [
-                                    {
-                                        name: '🎵 Music Commands',
-                                        value: '`/play` - Play a song or playlist\n`/search` - Search for songs\n`/queue` - View the current queue\n`/skip` - Skip to the next song\n`/volume` - Adjust the volume'
-                                    },
-                                    {
-                                        name: '⚙️ Settings',
-                                        value: '`/247` - Toggle 24/7 mode\n`/loop` - Set loop mode\n`/autoplay` - Toggle autoplay'
-                                    }
-                                ]
-                            });
-                            
+                            const helpText = `**Bot Help**
+Here are the main commands you can use:
+
+• \`/play\` - Play a song by name or URL
+• \`/queue\` - View the current queue
+• \`/skip\` - Skip the current track
+• \`/stop\` - Stop playback and clear queue
+• \`/247\` - Toggle 24/7 mode
+• \`/help\` - Show detailed help`;
+
                             await interaction.reply({
-                                embeds: [helpEmbed],
+                                content: helpText,
                                 ephemeral: true
-                            });
+                            }).catch(() => {});
                         } catch (error) {
-                            console.error('Error in help button:', error);
+                            // Silent error handling
                         }
                         break;
                 }
             } catch (error) {
-                // Just log the error and don't try to respond to the interaction
-                // This avoids the most common issues with button interactions
-                console.error('Error handling button interaction:', error);
-                // We don't attempt to reply to the interaction here to avoid additional errors
+                // Silent error handling for the entire button section
+            }
+        } else if (interaction.isStringSelectMenu()) {
+            // Log select menu interaction
+            try {
+                const selectedValues = interaction.values.join(', ');
+                logger.command(interaction, `Select Menu: ${interaction.customId}`, `Selected: ${selectedValues}`);
+            } catch (error) {
+                // Silent error for logger
+            }
+
+            // Handle filter select menu (legacy support)
+            if (interaction.customId === 'filter_select') {
+                const selectedFilter = interaction.values[0];
+                const guild = interaction.guild;
+                const member = interaction.member;
+
+                // Get the player instance for this server
+                const player = interaction.client.kazagumo.players.get(guild.id);
+
+                if (!player) {
+                    return interaction.reply({ 
+                        content: 'There is no active player in this server!', 
+                        ephemeral: true 
+                    }).catch(() => {});
+                }
+
+                // Check if user is in the same voice channel
+                if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
+                    return interaction.reply({ 
+                        content: 'You must be in the same voice channel as the bot to use this!', 
+                        ephemeral: true 
+                    }).catch(() => {});
+                }
+
+                try {
+                    // Import filter utilities
+                    const { applyFilter, clearFilters, getFilterDisplayName } = require('../utils/filters');
+
+                    // Handle 'none' selection (clear filters)
+                    if (selectedFilter === 'none') {
+                        await clearFilters(player);
+                        await interaction.reply({
+                            content: 'All filters have been cleared!',
+                            ephemeral: true
+                        }).catch(() => {});
+                    } else {
+                        // Apply the selected filter
+                        const success = await applyFilter(player, selectedFilter);
+
+                        if (success) {
+                            await interaction.reply({
+                                content: `Applied the ${getFilterDisplayName(selectedFilter)} filter!`,
+                                ephemeral: true
+                            }).catch(() => {});
+                        } else {
+                            await interaction.reply({
+                                content: `Failed to apply the filter. Please try again.`,
+                                ephemeral: true
+                            }).catch(() => {});
+                        }
+                    }
+                } catch (error) {
+                    // Silent error handling
+                    await interaction.reply({
+                        content: 'An error occurred while applying the filter. Please try again.',
+                        ephemeral: true
+                    }).catch(() => {});
+                }
             }
         }
-    },
+    }
 };

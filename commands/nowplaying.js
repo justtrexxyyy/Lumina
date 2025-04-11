@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
 const { formatDuration, createProgressBar, createMusicCard } = require('../utils/formatters');
 const { getActiveFilter, getFilterDisplayName, hasActiveFilter } = require('../utils/filters');
@@ -11,7 +11,6 @@ module.exports = {
     
     async execute(interaction) {
         try {
-            console.log("Executing nowplaying command");
             const { client } = interaction;
             const guildId = interaction.guildId;
             
@@ -29,15 +28,18 @@ module.exports = {
                 return interaction.reply({ embeds: [errorEmbed('There is no track currently playing!')], ephemeral: true });
             }
             
-            console.log("Creating music card for:", current.title);
-            // Generate music card image
-            const musicCard = await createMusicCard(current, true);
-            console.log("Music card created, type:", Buffer.isBuffer(musicCard) ? "Buffer" : "Embed fallback");
-            
-            // Get position and create progress bar
+            // Get position and track info
             const position = player.position;
             const duration = current.length;
             const isStream = current.isStream;
+            
+            // Format duration string to match "0:00/duration" format with no space
+            const durationText = isStream ? 'LIVE' : formatDuration(duration);
+            const positionText = formatDuration(position);
+            const durationDisplay = `${positionText}/${durationText}`;
+            
+            // Generate music card image with current position for progress bar
+            const musicCard = await createMusicCard(current, true, position);
             
             // Create progress bar
             const progressBar = isStream ? 'LIVE' : createProgressBar(position, duration);
@@ -53,14 +55,11 @@ module.exports = {
                 const attachment = new AttachmentBuilder(musicCard, { name: 'nowplaying.png' });
                 
                 // Create the embed properly
-                const embed = createEmbed({
-                    title: 'Now Playing',
-                    description: `**[${current.title}](${config.supportServer})**\n<@${current.requester.id}>\n\n**Progress**: ${progressBar}\n**Volume**: ${player.volume}% | **Filter**: ${activeFilter} | **Loop**: ${getLoopModeName(player.loop)}`,
-                    color: '#87CEEB', // Sky blue to match the card
-                });
-                
-                // Explicitly set the image URL
-                embed.setImage('attachment://nowplaying.png');
+                const embed = new EmbedBuilder()
+                    .setTitle('Now Playing')
+                    .setDescription(`**[${current.title}](${config.supportServer})** • \`${durationDisplay}\`\n<@${current.requester.id}>\n\n**Progress**: ${progressBar}\n**Volume**: ${player.volume}% | **Filter**: ${activeFilter} | **Loop**: ${getLoopModeName(player.loop)}`)
+                    .setColor('#87CEEB') // Sky blue to match the card
+                    .setImage('attachment://nowplaying.png');
                 
                 reply = {
                     embeds: [embed],
@@ -68,8 +67,8 @@ module.exports = {
                 };
             } else {
                 // Fallback to the embed if image creation failed
-                // Add progress bar to the embed description
-                musicCard.description += `\n\n${progressBar}`;
+                // Make sure the description follows the correct format (track name • duration)
+                musicCard.description = `**[${current.title}](${config.supportServer})** • \`${durationDisplay}\`\n<@${current.requester.id}>\n\n${progressBar}`;
                 
                 // Add minimal fields for additional info that should still be shown
                 musicCard.fields = [
@@ -93,74 +92,7 @@ module.exports = {
                 reply = { embeds: [musicCard] };
             }
             
-            // Create buttons for the nowplaying command
-            // Button row with essential controls
-            const nowPlayingRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('pauseresume')
-                        .setLabel('Pause/Resume')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('replay')
-                        .setLabel('Replay')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
-                        .setCustomId('skip')
-                        .setLabel('Skip')
-                        .setStyle(ButtonStyle.Secondary)
-                );
-
-            // Add additional control buttons
-            const controlsRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('shuffle')
-                        .setLabel('Shuffle')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
-                        .setCustomId('stop')
-                        .setLabel('Stop')
-                        .setStyle(ButtonStyle.Danger)
-                );
-                
-            // Create a dropdown menu for filters
-            const filtersDropdown = new StringSelectMenuBuilder()
-                .setCustomId('filter_select')
-                .setPlaceholder('Select a filter')
-                .addOptions([
-                    {
-                        label: 'No Filter',
-                        description: 'Remove all filters',
-                        value: 'none'
-                    },
-                    {
-                        label: 'Bass Boost',
-                        description: 'Enhance the bass frequencies',
-                        value: 'bassboost'
-                    },
-                    {
-                        label: 'Nightcore',
-                        description: 'Faster with tremolo effect',
-                        value: 'nightcore'
-                    },
-                    {
-                        label: 'Vaporwave',
-                        description: 'Slowed down effect',
-                        value: 'vaporwave'
-                    },
-                    {
-                        label: '8D Audio',
-                        description: 'Spatial audio effect',
-                        value: '8d'
-                    }
-                ]);
-                
-            const filtersDropdownRow = new ActionRowBuilder()
-                .addComponents(filtersDropdown);
-                
-            // Add components to the reply
-            reply.components = [filtersDropdownRow, nowPlayingRow, controlsRow];
+            // No interactive components in nowplaying command per user request
             
             // Reply with the music card and controls
             await interaction.reply(reply);

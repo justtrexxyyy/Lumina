@@ -4,10 +4,9 @@ const { createCanvas, loadImage } = require('canvas');
 const path = require('path');
 
 module.exports = {
-    createMusicCard: async (track, isPlaying = false) => {
+    createMusicCard: async (track, isPlaying = false, position = 0) => {
         try {
-            console.log("Starting to create music card for track:", track.title);
-            console.log("Track thumbnail URL:", track.thumbnail);
+            // Creating music card for track
             
             const canvas = createCanvas(900, 250);
             const ctx = canvas.getContext('2d');
@@ -19,20 +18,21 @@ module.exports = {
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, 900, 250);
             
-            // Create a rounded rectangle for the thumbnail area
+            // Create a perfect square for the thumbnail area - YouTube Music mobile style
+            // Size it to be a perfect square without any black bars
             ctx.save();
+            // Create a clipping region exactly the size of the thumbnail
+            const thumbX = 20;
+            const thumbY = 25;
+            const thumbSize = 200;
             ctx.beginPath();
-            ctx.moveTo(30, 30);
-            ctx.lineTo(230, 30);
-            ctx.lineTo(230, 230);
-            ctx.lineTo(30, 230);
+            ctx.rect(thumbX, thumbY, thumbSize, thumbSize);
             ctx.closePath();
             ctx.clip();
             
             // Load and draw thumbnail
             let thumbnail;
             try {
-                console.log("Attempting to load thumbnail image...");
                 // Check if thumbnail exists and is a valid URL
                 if (!track.thumbnail || track.thumbnail.startsWith('attachment://')) {
                     throw new Error('Invalid thumbnail URL: ' + track.thumbnail);
@@ -49,7 +49,6 @@ module.exports = {
                     const videoId = track.uri.split('v=')[1].split('&')[0];
                     if (videoId) {
                         const highQualityThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                        console.log("Using high quality YouTube thumbnail:", highQualityThumbnail);
                         thumbnail = await loadImage(highQualityThumbnail);
                     } else {
                         throw new Error('Could not extract valid YouTube video ID');
@@ -58,20 +57,13 @@ module.exports = {
                     // For non-YouTube tracks, use the provided thumbnail
                     thumbnail = await loadImage(track.thumbnail);
                 }
-                console.log("Thumbnail loaded successfully");
             } catch (imgError) {
-                console.error("Error loading thumbnail image:", imgError.message);
-                console.error("Thumbnail URL was:", track.thumbnail);
-                
                 // Try to use a guaranteed default image hosted by Discord
                 try {
-                    console.log("Attempting to load default Discord music icon...");
                     // Discord's music icon (should be consistently available)
                     thumbnail = await loadImage('https://cdn.discordapp.com/attachments/1092885051546558574/1224143546803499089/music_note.png');
-                    console.log("Default Discord music icon loaded successfully");
                 } catch (fallbackError) {
                     // If even the Discord-hosted image fails, create a local fallback
-                    console.log("Creating fallback thumbnail image");
                     const fallbackImg = createCanvas(200, 200);
                     const fctx = fallbackImg.getContext('2d');
                     fctx.fillStyle = '#36393f';
@@ -83,21 +75,33 @@ module.exports = {
                     thumbnail = fallbackImg;
                 }
             }
-            ctx.drawImage(thumbnail, 30, 30, 200, 200);
+            // YouTube Music mobile-style perfect square thumbnail
+            ctx.drawImage(thumbnail, thumbX, thumbY, thumbSize, thumbSize);
             ctx.restore();
             
             // Add a subtle border to the album art
             ctx.strokeStyle = '#ffffff30';
             ctx.lineWidth = 2;
-            ctx.strokeRect(30, 30, 200, 200);
+            ctx.strokeRect(thumbX, thumbY, thumbSize, thumbSize);
             
-            // Playback progress bar background (decorative only)
+            // Playback progress bar background
             ctx.fillStyle = '#4e545c';
             ctx.fillRect(260, 170, 580, 6);
             
-            // Playback progress bar (decorative only - shows about 30% progress)
+            // Calculate actual progress if position and length are provided
+            let progressWidth = 0;
+            if (position > 0 && track.length > 0) {
+                // Calculate percentage of track completed
+                const percentage = Math.min(position / track.length, 1);
+                progressWidth = Math.floor(580 * percentage);
+            } else {
+                // For index.js version with zero duration, show empty progress
+                progressWidth = 0;
+            }
+            
+            // Draw the progress bar
             ctx.fillStyle = '#4682B4'; // Steel blue to match status badge
-            ctx.fillRect(260, 170, 180, 6);
+            ctx.fillRect(260, 170, progressWidth, 6);
             
             // Text styling for title
             ctx.fillStyle = '#ffffff';
@@ -108,18 +112,26 @@ module.exports = {
             if (title.length > 45) title = title.substring(0, 42) + '...';
             ctx.fillText(title, 260, 70);
             
-            // Draw artist
-            ctx.font = '22px Arial';
-            ctx.fillStyle = '#b9bbbe';
+            // Draw artist with darker color for better visibility
+            ctx.font = 'bold 22px Arial';
+            ctx.fillStyle = '#333333'; // Dark color for artist name
             ctx.fillText(track.author, 260, 110);
             
             // Draw duration with icon
             const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
             
-            // Duration text
+            // Duration text with position if available (SoundCloud style)
             ctx.font = '18px Arial';
             ctx.fillStyle = '#ffffff';
-            ctx.fillText('⏱️ ' + duration, 260, 210);
+            
+            if (position > 0 && track.length > 0) {
+                // Show current position / total duration for nowplaying command
+                const positionText = module.exports.formatDuration(position);
+                ctx.fillText(`⏱️ ${positionText}/${duration}`, 260, 210);
+            } else {
+                // Show "0:00/duration" for index.js (zero position) as requested
+                ctx.fillText(`⏱️ 0:00/${duration}`, 260, 210);
+            }
             
             // Status badge (Now Playing)
             if (isPlaying) {
@@ -172,15 +184,11 @@ module.exports = {
                 ctx.fill();
             }
             
-            console.log("Generating canvas buffer...");
+            // Generate the canvas buffer
             const buffer = canvas.toBuffer();
-            console.log("Canvas buffer created successfully, size:", buffer.length, "bytes");
             return buffer;
         } catch (error) {
-            console.error('Error creating music card:', error);
-            console.error('Error stack:', error.stack);
             // Fallback to embed if image creation fails - now with proper duration reference
-            console.log("Creating fallback embed...");
             const duration = track.isStream ? 'LIVE' : module.exports.formatDuration(track.length);
             return createEmbed({
                 title: isPlaying ? 'Now Playing' : 'Track',
