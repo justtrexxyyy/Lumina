@@ -68,8 +68,8 @@ async function sendLog(type, title, description, fields = [], options = {}) {
 
         // Send the log message
         await webhookClient.send({
-            username: options.username || 'Music Bot Logger',
-            avatarURL: options.avatarURL || 'https://i.imgur.com/AfFp7pu.png',
+            username: options.username || 'Puzzle Music Logs',
+            avatarURL: options.avatarURL || 'https://i.imgur.com/B4JMdYE.png', // Music note icon
             embeds: [embed]
         });
     } catch (error) {
@@ -93,16 +93,16 @@ module.exports = {
         
         await sendLog(
             'COMMAND', 
-            `Command Executed: /${commandName}`,
-            details || 'No additional details',
+            `/${commandName}`,
+            details || 'Command executed successfully',
             [
                 { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
                 { name: 'Guild', value: `${guild ? guild.name : 'DM'} (${guild ? guild.id : 'N/A'})`, inline: true },
                 { name: 'Channel', value: `${interaction.channel ? interaction.channel.name : 'Unknown'} (${interaction.channel ? interaction.channel.id : 'N/A'})`, inline: true }
             ],
             {
-                username: 'Command Logger',
-                avatarURL: 'https://cdn.discordapp.com/emojis/839912391856914462.webp',
+                username: 'Audic Commands',
+                avatarURL: 'https://cdn.discordapp.com/attachments/1098183940499591188/1356117565696508065/copilot_image_1742024927163.jpg?ex=67fa8fa7&is=67f93e27&hm=2b1da982cfa1dded35796dad50264b7d2813edc19eeba22e6c82d281ee342cb8&', // Command icon
                 footer: `Command executed at ${new Date().toLocaleString()}`
             }
         );
@@ -135,12 +135,15 @@ module.exports = {
 
         await sendLog(
             'PLAYER',
-            `Player Event: ${event}`,
-            `A ${event} event occurred in the music player.`,
+            `Music Player: ${event.charAt(0).toUpperCase() + event.slice(1)}`,
+            event === 'start' ? 'Started playing a new track' : 
+                event === 'end' ? 'Track playback ended' : 
+                event === 'empty' ? 'Queue is now empty' : 
+                `A ${event} event occurred in the music player.`,
             fields,
             {
-                username: 'Player Logger',
-                avatarURL: 'https://cdn.discordapp.com/emojis/968613867482419270.webp',
+                username: 'Audic Music Player',
+                avatarURL: 'https://cdn.discordapp.com/attachments/1098183940499591188/1356117565696508065/copilot_image_1742024927163.jpg?ex=67fa8fa7&is=67f93e27&hm=2b1da982cfa1dded35796dad50264b7d2813edc19eeba22e6c82d281ee342cb8&', // Music player icon
                 thumbnail: track && track.thumbnail ? track.thumbnail : null
             }
         );
@@ -157,12 +160,12 @@ module.exports = {
 
         await sendLog(
             'SYSTEM',
-            `System Event: ${event}`,
+            `${event}`,
             description,
             fields,
             {
-                username: 'System Logger',
-                avatarURL: 'https://cdn.discordapp.com/emojis/968613404021800970.webp'
+                username: 'Audic System',
+                avatarURL: 'https://cdn.discordapp.com/attachments/1098183940499591188/1356117565696508065/copilot_image_1742024927163.jpg?ex=67fa8fa7&is=67f93e27&hm=2b1da982cfa1dded35796dad50264b7d2813edc19eeba22e6c82d281ee342cb8&'  // System icon
             }
         );
     },
@@ -181,15 +184,15 @@ module.exports = {
 
         await sendLog(
             'ERROR',
-            `Error in ${source}`,
+            `${source} Error`,
             errorMessage,
             [
                 { name: 'Stack Trace', value: `\`\`\`${errorStack.substring(0, 1000)}\`\`\``, inline: false },
                 ...fields
             ],
             {
-                username: 'Error Logger',
-                avatarURL: 'https://cdn.discordapp.com/emojis/968613725537878047.webp'
+                username: 'Audic Errors',
+                avatarURL: 'https://cdn.discordapp.com/attachments/1098183940499591188/1356117565696508065/copilot_image_1742024927163.jpg?ex=67fa8fa7&is=67f93e27&hm=2b1da982cfa1dded35796dad50264b7d2813edc19eeba22e6c82d281ee342cb8&'  // Error icon
             }
         );
     }

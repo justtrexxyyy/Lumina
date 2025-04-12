@@ -207,20 +207,20 @@ client.kazagumo.on('playerStart', async (player, track) => {
         client.inactivityTimeouts.delete(player.guildId);
     }
 
+    // Set bot activity to show currently playing track
+    client.user.setActivity(`${track.title}`, { type: 2 }); // Type 2 is "Listening to"
+    
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
-        console.log(`Found channel for now playing message: ${channel.name} (${channel.id})`);
         try {
             // Use the music card image for Now Playing
             const { createMusicCard, formatDuration } = require('./utils/formatters');
             const { createEmbed } = require('./utils/embeds');
             
-            console.log("Creating music card for track:", track.title);
             // Generate music card with track info
             // Create a modified track with zero duration for index.js per user request
             const trackWithZeroDuration = {...track, length: 0};
             const musicCard = await createMusicCard(trackWithZeroDuration, true);
-            console.log("Music card created, type:", Buffer.isBuffer(musicCard) ? "Buffer" : "Embed fallback");
             
             // Prepare message content based on whether we got an image or fallback embed
             let messageContent = {};
@@ -422,6 +422,9 @@ client.kazagumo.on('playerStart', async (player, track) => {
 client.kazagumo.on('playerEmpty', async (player) => {
     // Log the queue empty event
     logger.player('empty', player, null, 'Queue is now empty');
+    
+    // Reset bot activity when queue is empty
+    client.user.setActivity('/help', { type: 2 });
     
     const channel = client.channels.cache.get(player.textId);
     const guildId = player.guildId;
@@ -982,7 +985,7 @@ client.login(process.env.DISCORD_TOKEN)
         logger.system('Bot Startup', `Bot successfully started and logged in as ${client.user.tag}`, [
             { name: 'Guilds', value: `${client.guilds.cache.size}`, inline: true },
             { name: 'Users', value: `${client.users.cache.size}`, inline: true },
-            { name: 'Lavalink Nodes', value: `${shoukaku.nodes.length}`, inline: true }
+            { name: 'Lavalink Status', value: 'Connected', inline: true }
         ]);
     })
     .catch(error => {

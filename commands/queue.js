@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { createEmbed, errorEmbed } = require('../utils/embeds');
-const { formatDuration, createMusicCard } = require('../utils/formatters');
+const { formatDuration, formatDurationLong } = require('../utils/formatters');
 const config = require('../config');
 
 module.exports = {
@@ -51,8 +51,8 @@ module.exports = {
             totalQueueDuration += current.length - player.position;
         }
         
-        // Create a simplified music card for the currently playing track
-        const currentCard = createMusicCard(current, true);
+        // We'll handle the current track within the queue display
+        // No need to create a separate music card here
         
         // Create description for upcoming tracks in the queue
         let upcomingDescription = '';
@@ -71,15 +71,20 @@ module.exports = {
         // Add queue stats
         const queueStats = [
             `Total Tracks: ${queue.length + 1}`,
-            `Total Duration: ${formatTotalDuration(totalQueueDuration)}`,
+            `Total Duration: ${formatDurationLong(totalQueueDuration)}`,
             `Loop Mode: ${getLoopModeName(player.loop)}`,
             `Volume: ${player.volume}%`
         ];
         
-        // Send both the current music card and the queue info
+        // Format the currently playing track
+        const currentDuration = current.isStream ? 'LIVE' : formatDuration(current.length);
+        const currentPosition = formatDuration(player.position);
+        const currentTrackInfo = `**Now Playing:**\n[${current.title}](${config.supportServer}) • \`${currentPosition}/${currentDuration}\`\nRequested by: <@${current.requester.id}>\n\n`;
+        
+        // Send the queue info with currently playing track
         const queueEmbed = createEmbed({
             title: `Queue for ${interaction.guild.name}`,
-            description: `**Up Next:**\n${upcomingDescription}`,
+            description: `${currentTrackInfo}**Up Next:**\n${upcomingDescription}`,
             fields: [
                 {
                     name: 'Queue Info',
@@ -87,7 +92,8 @@ module.exports = {
                 }
             ],
             footer: `Page ${page}/${totalPages} | Use /queue <page> to view more`,
-            thumbnail: current.thumbnail
+            thumbnail: current.thumbnail,
+            color: '#87CEEB' // Sky blue to match the music card theme
         });
         
         // Add navigation buttons if there are multiple pages
@@ -97,27 +103,12 @@ module.exports = {
         }
         
         await interaction.reply({ 
-            embeds: [currentCard, queueEmbed] 
+            embeds: [queueEmbed] 
         });
     },
 };
 
-// Helper functions
-function formatTotalDuration(ms) {
-    if (ms <= 0) return '0 seconds';
-    
-    const seconds = Math.floor((ms / 1000) % 60);
-    const minutes = Math.floor((ms / (1000 * 60)) % 60);
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    
-    const parts = [];
-    if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
-    if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
-    if (seconds > 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
-    
-    return parts.join(', ');
-}
-
+// Helper function
 function getLoopModeName(loopMode) {
     switch (loopMode) {
         case 'none': return `Off`;
