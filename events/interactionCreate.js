@@ -178,6 +178,87 @@ module.exports = {
                         }
                         break;
                         
+                    // Combined pause/resume toggle button
+                    case 'pauseresume':
+                        try {
+                            const wasPaused = player.paused;
+                            
+                            // Toggle the player's paused state
+                            if (wasPaused) {
+                                player.pause(false);
+                                await interaction.reply({ 
+                                    content: 'Resumed the playback!',
+                                    ephemeral: true 
+                                }).catch(() => {});
+                            } else {
+                                player.pause(true);
+                                await interaction.reply({ 
+                                    content: 'Paused the playback!',
+                                    ephemeral: true 
+                                }).catch(() => {});
+                            }
+                            
+                            // Update the button label
+                            try {
+                                const messageInfo = client.nowPlayingMessages.get(guild.id);
+                                if (messageInfo) {
+                                    const messageChannel = client.channels.cache.get(messageInfo.channelId);
+                                    if (messageChannel) {
+                                        const message = await messageChannel.messages.fetch(messageInfo.messageId);
+                                        if (message && message.editable) {
+                                            // Create updated rows
+                                            const updatedComponents = [];
+                                            
+                                            // Go through each row and update as needed
+                                            for (const row of message.components) {
+                                                const newRow = new ActionRowBuilder();
+                                                const componentButtons = [];
+                                                
+                                                // Process each component in the row
+                                                for (const component of row.components) {
+                                                    if (component.type === 2) { // Type 2 is a button
+                                                        const button = ButtonBuilder.from(component);
+                                                        // Update the label for pause/resume button
+                                                        if (component.customId === 'pauseresume') {
+                                                            // After toggling, set the label based on the new state
+                                                            button.setLabel(player.paused ? 'Resume' : 'Pause');
+                                                        }
+                                                        componentButtons.push(button);
+                                                    } else {
+                                                        // For non-buttons (like select menus), clone them directly
+                                                        const clone = { ...component.data };
+                                                        if (component.type === 3) { // Type 3 is select menu
+                                                            newRow.addComponents(new StringSelectMenuBuilder(clone));
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // Add all buttons to the row if there are any
+                                                if (componentButtons.length > 0) {
+                                                    newRow.addComponents(componentButtons);
+                                                    updatedComponents.push(newRow);
+                                                } else if (newRow.components && newRow.components.length > 0) {
+                                                    updatedComponents.push(newRow);
+                                                }
+                                            }
+                                            
+                                            // Update the message if we have components
+                                            if (updatedComponents.length > 0) {
+                                                await message.edit({ components: updatedComponents }).catch(() => {});
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (updateError) {
+                                // Silent catch - if we can't update the button, it's not critical
+                                console.log("Button update error:", updateError);
+                            }
+                        } catch (error) {
+                            // Silent error handling
+                            console.error("Error in pauseresume button:", error);
+                        }
+                        break;
+                    
                     // Keep these for backward compatibility with any old messages
                     case 'pause':
                         try {
@@ -217,9 +298,28 @@ module.exports = {
                         
                     case 'stop':
                         try {
-                            // Don't delete the nowplaying message when using the button
-                            // Only destroy the player
+                            // Get the message ID before destroying the player
+                            const messageInfo = client.nowPlayingMessages.get(guild.id);
+                            
+                            // Destroy the player
                             player.destroy();
+                            
+                            // Remove components from the now playing message
+                            if (messageInfo) {
+                                try {
+                                    const messageChannel = client.channels.cache.get(messageInfo.channelId);
+                                    if (messageChannel) {
+                                        const message = await messageChannel.messages.fetch(messageInfo.messageId);
+                                        if (message && message.editable) {
+                                            // Remove all components (buttons)
+                                            await message.edit({ components: [] }).catch(() => {});
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Silent error handling
+                                }
+                            }
+                            
                             await interaction.reply({ 
                                 content: 'Stopped playback and cleared the queue!',
                                 ephemeral: true 
@@ -294,13 +394,15 @@ module.exports = {
                         
                     case 'shuffle':
                         try {
-                            if (player.queue.length < 2) {
+                            // Always shuffle regardless of queue length
+                            player.queue.shuffle();
+                            
+                            if (player.queue.length === 0) {
                                 await interaction.reply({
-                                    content: 'Need at least 2 tracks in the queue to shuffle!',
+                                    content: 'Current track shuffled!',
                                     ephemeral: true
                                 }).catch(() => {});
                             } else {
-                                player.queue.shuffle();
                                 await interaction.reply({ 
                                     content: 'Queue has been shuffled!',
                                     ephemeral: true 

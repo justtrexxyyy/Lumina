@@ -254,12 +254,14 @@ client.kazagumo.on('playerStart', async (player, track) => {
 
             // Add buttons and filter select menu for now playing message
 
-            // Button row with essential controls
+            // Button row with essential controls - using combined pause/resume button
+            // Initial label is "Pause" because the player is playing when this is created
+            // Label will dynamically change to "Resume" when paused and back to "Pause" when resumed
             const nowPlayingRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('pauseresume')
-                        .setLabel('Pause/Resume')
+                        .setLabel('Pause')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('replay')
@@ -391,12 +393,13 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const fallbackFilterRow = new ActionRowBuilder()
                 .addComponents(fallbackFilterMenu);
 
-            // Add a basic controls row as well for fallback
+            // Add a basic controls row as well for fallback - using combined pause/resume
+            // Initial label is "Pause" because the player is playing when this is created
             const fallbackControlsRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('pauseresume')
-                        .setLabel('Pause/Resume')
+                        .setLabel('Pause')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('skip')
@@ -860,10 +863,50 @@ Here are the main commands you can use:
             
             // Handle each button type
             switch (interaction.customId) {
-                case 'pauseresume':
-                    player.pause(!player.paused);
+                case 'pause':
+                    // Explicitly pause the music
+                    console.log("Pause button clicked, pausing music.");
+                    
+                    // Set the player state to paused
+                    player.pause(true);
+                    
+                    // Log actual state after update for verification
+                    console.log(`Player state after pause: paused=${player.paused}`);
+                    
+                    // Return appropriate message
                     return interaction.reply({ 
-                        content: player.paused ? 'Paused the music!' : 'Resumed the music!', 
+                        content: 'Paused the music! Click Resume to continue playback.', 
+                        ephemeral: true 
+                    });
+                    
+                case 'resume':
+                    // Explicitly resume the music
+                    console.log("Resume button clicked, resuming music.");
+                    
+                    // Set the player state to not paused (playing)
+                    player.pause(false);
+                    
+                    // Log actual state after update for verification
+                    console.log(`Player state after resume: paused=${player.paused}`);
+                    
+                    // Return appropriate message
+                    return interaction.reply({ 
+                        content: 'Resumed the music! Click Pause to pause playback.', 
+                        ephemeral: true 
+                    });
+                    
+                // Keep backward compatibility with old 'pauseresume' button for a while
+                case 'pauseresume':
+                    // Simple toggle approach
+                    const isPaused = player.paused;
+                    player.pause(!isPaused);
+                    
+                    console.log(`Legacy pauseresume button used. Was paused: ${isPaused}, Now paused: ${player.paused}`);
+                    
+                    return interaction.reply({ 
+                        content: player.paused ? 
+                            'Paused the music! Use the Resume button to continue.' : 
+                            'Resumed the music! Use the Pause button to pause again.', 
                         ephemeral: true 
                     });
                     
@@ -875,24 +918,84 @@ Here are the main commands you can use:
                     });
                     
                 case 'replay':
-                    await player.seek(0);
-                    return interaction.reply({ 
-                        content: 'Replaying current track from the beginning!', 
-                        ephemeral: true 
-                    });
-                    
-                case 'shuffle':
-                    if (player.queue.length < 2) {
+                    // Stop the current track and restart it
+                    const currentTrack = player.queue.current;
+                    if (currentTrack) {
+                        // Stop the player and restart the same track
+                        await player.seek(0);
+                        await player.pause(true); // Pause first
+                        setTimeout(() => {
+                            player.pause(false); // Resume after a short delay
+                        }, 500);
+                        
                         return interaction.reply({ 
-                            content: 'Need at least 2 tracks in the queue to shuffle!', 
+                            content: 'Stopped and restarted the current track!', 
+                            ephemeral: true 
+                        });
+                    } else {
+                        return interaction.reply({ 
+                            content: 'No track is currently playing!', 
                             ephemeral: true 
                         });
                     }
-                    player.queue.shuffle();
-                    return interaction.reply({ 
-                        content: 'Queue has been shuffled!', 
-                        ephemeral: true 
-                    });
+                    
+                case 'shuffle':
+                    // Get current track
+                    const currentSong = player.queue.current;
+                    
+                    // If there's a current song, include it in shuffle regardless of queue length
+                    if (currentSong) {
+                        // Even if there are no additional tracks, we'll just give a specific message
+                        if (player.queue.length === 0) {
+                            return interaction.reply({ 
+                                content: 'No additional tracks in queue. Add more songs to create a shuffle mix!', 
+                                ephemeral: true 
+                            });
+                        }
+                        
+                        // First shuffle the upcoming tracks
+                        player.queue.shuffle();
+                        
+                        // Create an array with current song and all other tracks
+                        const tracksToShuffle = [currentSong, ...player.queue.tracks];
+                        
+                        // Shuffle all tracks including current
+                        for (let i = tracksToShuffle.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [tracksToShuffle[i], tracksToShuffle[j]] = [tracksToShuffle[j], tracksToShuffle[i]];
+                        }
+                        
+                        // Clear the queue and add all shuffled tracks except the first one
+                        player.queue.clear();
+                        player.queue.add(tracksToShuffle.slice(1)); // Add all except first
+                        
+                        // Skip to play the first track from shuffled list
+                        try {
+                            // Only skip if the first track is different from current
+                            if (tracksToShuffle[0].uri !== currentSong.uri) {
+                                // Add the first shuffled track to the beginning of the queue and skip
+                                player.queue.add(tracksToShuffle[0], 0); // Insert at position 0
+                                player.skip();
+                            }
+                            
+                            return interaction.reply({ 
+                                content: 'Shuffled all tracks including the current one!', 
+                                ephemeral: true 
+                            });
+                        } catch (error) {
+                            console.error("Error during shuffle skip:", error);
+                            // If skip fails, at least we shuffled the queue
+                            return interaction.reply({ 
+                                content: 'Shuffled the queue, but couldn\'t change the current track.', 
+                                ephemeral: true 
+                            });
+                        }
+                    } else {
+                        return interaction.reply({ 
+                            content: 'No track is currently playing!', 
+                            ephemeral: true 
+                        });
+                    }
                     
                 case 'stop':
                     player.destroy();
