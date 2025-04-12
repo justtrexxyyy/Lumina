@@ -181,16 +181,22 @@ module.exports = {
                     // Combined pause/resume toggle button
                     case 'pauseresume':
                         try {
-                            const wasPaused = player.paused;
+                            // Get the current paused state BEFORE changing it
+                            const currentlyPaused = player.paused;
                             
-                            // Toggle the player's paused state
-                            if (wasPaused) {
+                            // Get the nowplaying message information
+                            const messageInfo = client.nowPlayingMessages.get(guild.id);
+                            
+                            // Toggle the pause state
+                            if (currentlyPaused) {
+                                // Was paused, so resume it
                                 player.pause(false);
                                 await interaction.reply({ 
                                     content: 'Resumed the playback!',
                                     ephemeral: true 
                                 }).catch(() => {});
                             } else {
+                                // Was playing, so pause it
                                 player.pause(true);
                                 await interaction.reply({ 
                                     content: 'Paused the playback!',
@@ -198,60 +204,73 @@ module.exports = {
                                 }).catch(() => {});
                             }
                             
-                            // Update the button label
-                            try {
-                                const messageInfo = client.nowPlayingMessages.get(guild.id);
-                                if (messageInfo) {
+                            // Update the button's label if we have a message
+                            if (messageInfo) {
+                                try {
                                     const messageChannel = client.channels.cache.get(messageInfo.channelId);
                                     if (messageChannel) {
-                                        const message = await messageChannel.messages.fetch(messageInfo.messageId);
+                                        const message = await messageChannel.messages.fetch(messageInfo.messageId).catch(() => null);
                                         if (message && message.editable) {
-                                            // Create updated rows
-                                            const updatedComponents = [];
+                                            // Determine the new button label based on the NEW paused state
+                                            // (the opposite of what it was before)
+                                            const newLabel = currentlyPaused ? 'Pause' : 'Resume';
                                             
-                                            // Go through each row and update as needed
+                                            // Create new action rows with updated button label
+                                            const updatedRows = [];
+                                            
+                                            // Process each existing row in the message
                                             for (const row of message.components) {
                                                 const newRow = new ActionRowBuilder();
-                                                const componentButtons = [];
+                                                const newComponents = [];
                                                 
                                                 // Process each component in the row
                                                 for (const component of row.components) {
-                                                    if (component.type === 2) { // Type 2 is a button
-                                                        const button = ButtonBuilder.from(component);
-                                                        // Update the label for pause/resume button
+                                                    if (component.type === 2) { // Button type
+                                                        // Create a new button based on the existing one
+                                                        const newButton = new ButtonBuilder()
+                                                            .setCustomId(component.customId)
+                                                            .setStyle(component.style);
+                                                        
+                                                        // If this is the pause/resume button, update its label
                                                         if (component.customId === 'pauseresume') {
-                                                            // After toggling, set the label based on the new state
-                                                            button.setLabel(player.paused ? 'Resume' : 'Pause');
+                                                            newButton.setLabel(newLabel);
+                                                        } else {
+                                                            newButton.setLabel(component.label);
                                                         }
-                                                        componentButtons.push(button);
-                                                    } else {
-                                                        // For non-buttons (like select menus), clone them directly
-                                                        const clone = { ...component.data };
-                                                        if (component.type === 3) { // Type 3 is select menu
-                                                            newRow.addComponents(new StringSelectMenuBuilder(clone));
-                                                        }
+                                                        
+                                                        newComponents.push(newButton);
+                                                    } else if (component.type === 3) { // Select menu type
+                                                        // Copy the select menu as is
+                                                        const selectMenu = new StringSelectMenuBuilder()
+                                                            .setCustomId(component.customId)
+                                                            .setPlaceholder(component.placeholder)
+                                                            .addOptions(component.options);
+                                                        
+                                                        newRow.addComponents(selectMenu);
                                                     }
                                                 }
                                                 
-                                                // Add all buttons to the row if there are any
-                                                if (componentButtons.length > 0) {
-                                                    newRow.addComponents(componentButtons);
-                                                    updatedComponents.push(newRow);
-                                                } else if (newRow.components && newRow.components.length > 0) {
-                                                    updatedComponents.push(newRow);
+                                                // If we have buttons to add, add them to the row
+                                                if (newComponents.length > 0) {
+                                                    newRow.addComponents(newComponents);
+                                                }
+                                                
+                                                // Add the row if it has components
+                                                if (newRow.components && newRow.components.length > 0) {
+                                                    updatedRows.push(newRow);
                                                 }
                                             }
                                             
-                                            // Update the message if we have components
-                                            if (updatedComponents.length > 0) {
-                                                await message.edit({ components: updatedComponents }).catch(() => {});
+                                            // Edit the message with the updated rows
+                                            if (updatedRows.length > 0) {
+                                                await message.edit({ components: updatedRows }).catch(() => {});
                                             }
                                         }
                                     }
+                                } catch (error) {
+                                    // Log error but don't break functionality
+                                    console.error("Error updating pause/resume button:", error.message);
                                 }
-                            } catch (updateError) {
-                                // Silent catch - if we can't update the button, it's not critical
-                                console.log("Button update error:", updateError);
                             }
                         } catch (error) {
                             // Silent error handling
@@ -301,6 +320,26 @@ module.exports = {
                             // Get the message ID before destroying the player
                             const messageInfo = client.nowPlayingMessages.get(guild.id);
                             
+                            // Make sure the user is in a voice channel and it's the same as the bot's
+                            const member = interaction.member;
+                            const userVoiceChannel = member.voice.channel;
+                            
+                            if (!userVoiceChannel) {
+                                await interaction.reply({ 
+                                    content: 'You need to be in a voice channel to stop the music!',
+                                    ephemeral: true 
+                                }).catch(() => {});
+                                return;
+                            }
+                            
+                            if (userVoiceChannel.id !== player.voiceId) {
+                                await interaction.reply({ 
+                                    content: 'You need to be in the same voice channel as the bot to stop the music!',
+                                    ephemeral: true 
+                                }).catch(() => {});
+                                return;
+                            }
+                            
                             // Destroy the player
                             player.destroy();
                             
@@ -309,7 +348,7 @@ module.exports = {
                                 try {
                                     const messageChannel = client.channels.cache.get(messageInfo.channelId);
                                     if (messageChannel) {
-                                        const message = await messageChannel.messages.fetch(messageInfo.messageId);
+                                        const message = await messageChannel.messages.fetch(messageInfo.messageId).catch(() => null);
                                         if (message && message.editable) {
                                             // Remove all components (buttons)
                                             await message.edit({ components: [] }).catch(() => {});
@@ -317,15 +356,28 @@ module.exports = {
                                     }
                                 } catch (e) {
                                     // Silent error handling
+                                    console.error("Error removing buttons on stop:", e.message);
                                 }
                             }
                             
+                            // Send success message
                             await interaction.reply({ 
                                 content: 'Stopped playback and cleared the queue!',
                                 ephemeral: true 
                             }).catch(() => {});
                         } catch (error) {
-                            // Silent error handling
+                            // Log error but don't break functionality
+                            console.error("Error in stop button:", error.message);
+                            
+                            // Try to send a friendly error message
+                            try {
+                                await interaction.reply({ 
+                                    content: 'Failed to stop playback. Please try again or use the /stop command.',
+                                    ephemeral: true 
+                                }).catch(() => {});
+                            } catch (replyError) {
+                                // Silent catch
+                            }
                         }
                         break;
                         
