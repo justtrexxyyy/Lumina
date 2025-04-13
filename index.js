@@ -1026,6 +1026,7 @@ Here are the main commands you can use:
                             ephemeral: true 
                         });
                     }
+                    break;
                     
                 case 'stop':
                     player.destroy();
