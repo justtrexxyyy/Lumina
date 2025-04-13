@@ -110,11 +110,26 @@ async function applyFilter(player, filterName) {
             return false;
         }
         
+        // Make sure music continues playing
+        const wasPlaying = player.playing;
+        const currentPosition = player.position;
+        
         // Store the active filter name on the player
         player.data.set('activeFilter', filterName);
         
         // Apply filter to the player - using filters property
         await player.shoukaku.setFilters(filterConfig);
+        
+        // Ensure playback continues if it was playing before
+        if (wasPlaying && !player.playing) {
+            try {
+                // Resume playback if it was stopped by filter application
+                await player.pause(false);
+            } catch (resumeError) {
+                console.error("Error resuming after filter:", resumeError);
+            }
+        }
+        
         return true;
     } catch (error) {
         console.error(`Error applying filter ${filterName}:`, error);
@@ -129,11 +144,26 @@ async function applyFilter(player, filterName) {
  */
 async function clearFilters(player) {
     try {
+        // Check if music was playing before clearing filters
+        const wasPlaying = player.playing;
+        const currentPosition = player.position;
+        
         // Remove the active filter reference
         player.data.delete('activeFilter');
         
         // Reset all filters - using empty filter object
         await player.shoukaku.setFilters({});
+        
+        // Ensure playback continues if it was playing before
+        if (wasPlaying && !player.playing) {
+            try {
+                // Resume playback if it was stopped by filter clearing
+                await player.pause(false);
+            } catch (resumeError) {
+                console.error("Error resuming after clearing filters:", resumeError);
+            }
+        }
+        
         return true;
     } catch (error) {
         console.error('Error clearing filters:', error);

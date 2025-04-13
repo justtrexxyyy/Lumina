@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionResponse } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionResponse, StringSelectMenuBuilder } = require('discord.js');
 const { createEmbed, errorEmbed, successEmbed } = require('../utils/embeds');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -149,22 +149,6 @@ module.exports = {
             
             try {
                 switch (interaction.customId) {
-                    case 'pauseresume':
-                        try {
-                            // Toggle between pause and resume
-                            const isPaused = player.paused;
-                            player.pause(!isPaused);
-                            
-                            // Use safeReply to handle the interaction safely
-                            await safeReply(interaction, { 
-                                content: isPaused ? 'Resumed the playback!' : 'Paused the playback!',
-                                ephemeral: true 
-                            });
-                        } catch (error) {
-                            // Silent error handling - no console logs
-                        }
-                        break;
-                        
                     case 'replay':
                         try {
                             // Seek to position 0 (beginning of the track)
@@ -181,27 +165,29 @@ module.exports = {
                     // Combined pause/resume toggle button
                     case 'pauseresume':
                         try {
-                            // Get the current paused state BEFORE changing it
-                            const currentlyPaused = player.paused;
+                            // Debug the current state
+                            console.log(`Pause/Resume button clicked - Current paused state: ${player.paused}`);
                             
                             // Get the nowplaying message information
                             const messageInfo = client.nowPlayingMessages.get(guild.id);
                             
-                            // Toggle the pause state
-                            if (currentlyPaused) {
-                                // Was paused, so resume it
-                                player.pause(false);
-                                await interaction.reply({ 
+                            // First, check if the player is already paused
+                            if (player.paused) {
+                                // Currently paused, so resume it
+                                console.log("Player is paused, resuming playback");
+                                await player.pause(false);
+                                await safeReply(interaction, { 
                                     content: 'Resumed the playback!',
                                     ephemeral: true 
-                                }).catch(() => {});
+                                });
                             } else {
-                                // Was playing, so pause it
-                                player.pause(true);
-                                await interaction.reply({ 
+                                // Currently playing, so pause it
+                                console.log("Player is playing, pausing playback");
+                                await player.pause(true);
+                                await safeReply(interaction, { 
                                     content: 'Paused the playback!',
                                     ephemeral: true 
-                                }).catch(() => {});
+                                });
                             }
                             
                             // Update the button's label if we have a message
@@ -211,9 +197,8 @@ module.exports = {
                                     if (messageChannel) {
                                         const message = await messageChannel.messages.fetch(messageInfo.messageId).catch(() => null);
                                         if (message && message.editable) {
-                                            // Determine the new button label based on the NEW paused state
-                                            // (the opposite of what it was before)
-                                            const newLabel = currentlyPaused ? 'Pause' : 'Resume';
+                                            // Keep the label as "Pause/Resume" for consistency
+                                            const newLabel = "Pause/Resume";
                                             
                                             // Create new action rows with updated button label
                                             const updatedRows = [];
@@ -281,37 +266,86 @@ module.exports = {
                     // Keep these for backward compatibility with any old messages
                     case 'pause':
                         try {
-                            player.pause(true);
-                            await interaction.reply({ 
+                            console.log("Legacy pause button used");
+                            // Make sure it's not already paused
+                            if (!player.paused) {
+                                await player.pause(true);
+                                console.log("Paused the playback");
+                            } else {
+                                console.log("Playback already paused");
+                            }
+                            await safeReply(interaction, { 
                                 content: 'Paused the playback!',
                                 ephemeral: true 
-                            }).catch(() => {});
+                            });
                         } catch (error) {
-                            // Silent error handling
+                            console.error("Error in pause button:", error);
                         }
                         break;
                         
                     case 'resume':
                         try {
-                            player.pause(false);
-                            await interaction.reply({ 
+                            console.log("Legacy resume button used");
+                            // Make sure it's actually paused
+                            if (player.paused) {
+                                await player.pause(false);
+                                console.log("Resumed the playback");
+                            } else {
+                                console.log("Playback already playing");
+                            }
+                            await safeReply(interaction, { 
                                 content: 'Resumed the playback!',
                                 ephemeral: true 
-                            }).catch(() => {});
+                            });
                         } catch (error) {
-                            // Silent error handling
+                            console.error("Error in resume button:", error);
                         }
                         break;
                         
                     case 'skip':
                         try {
-                            player.skip();
-                            await interaction.reply({ 
+                            // Get the current track before skipping
+                            const currentTrack = player.queue.current;
+                            
+                            // Skip to the next track
+                            await player.skip();
+                            
+                            // Get the now-playing track after skipping
+                            const nextTrack = player.queue.current;
+                            
+                            // Use safe reply method
+                            await safeReply(interaction, { 
                                 content: 'Skipped to the next track!',
                                 ephemeral: true 
-                            }).catch(() => {});
+                            });
+                            
+                            // Only refresh controls if there's a new track to play
+                            if (nextTrack) {
+                                // Get text channel
+                                const channel = client.channels.cache.get(player.textId);
+                                if (channel) {
+                                    try {
+                                        // This will trigger the events for the new track
+                                        // which will create a new Now Playing message with controls
+                                        setTimeout(() => {
+                                            // Import required modules
+                                            const { createMusicCard, formatDuration } = require('../utils/formatters');
+                                            const { createEmbed } = require('../utils/embeds');
+                                            
+                                            // Create a new now playing message with buttons
+                                            client.emit('refreshNowPlaying', player, nextTrack, channel);
+                                        }, 500); // Small delay to ensure skip is fully processed
+                                    } catch (refreshError) {
+                                        console.error("Error refreshing now playing after skip:", refreshError);
+                                    }
+                                }
+                            }
                         } catch (error) {
-                            // Silent error handling
+                            console.error("Error in skip button:", error);
+                            await safeReply(interaction, {
+                                content: 'Failed to skip the track.',
+                                ephemeral: true
+                            });
                         }
                         break;
                         
@@ -446,22 +480,43 @@ module.exports = {
                         
                     case 'shuffle':
                         try {
-                            // Always shuffle regardless of queue length
-                            player.queue.shuffle();
-                            
-                            if (player.queue.length === 0) {
-                                await interaction.reply({
-                                    content: 'Current track shuffled!',
-                                    ephemeral: true
-                                }).catch(() => {});
-                            } else {
-                                await interaction.reply({ 
-                                    content: 'Queue has been shuffled!',
+                            // Make sure we have a player that's playing
+                            if (!player.playing) {
+                                await safeReply(interaction, { 
+                                    content: 'There is no music currently playing.',
                                     ephemeral: true 
-                                }).catch(() => {});
+                                });
+                                break;
+                            }
+                            
+                            // Get the current queue
+                            const queueSize = player.queue.size;
+                            
+                            // Shuffle regardless of queue size (but warn if empty)
+                            if (queueSize > 0) {
+                                // Preserve the current track, shuffle the rest
+                                player.queue.shuffle();
+                                
+                                await safeReply(interaction, { 
+                                    content: `Queue has been shuffled! Rearranged ${queueSize} song${queueSize === 1 ? '' : 's'}.`,
+                                    ephemeral: true 
+                                });
+                            } else {
+                                await safeReply(interaction, {
+                                    content: 'No additional tracks in queue. Add more songs to create a shuffle mix!',
+                                    ephemeral: true
+                                });
                             }
                         } catch (error) {
-                            // Silent error handling
+                            console.error("Error in shuffle button:", error);
+                            try {
+                                await safeReply(interaction, { 
+                                    content: 'Failed to shuffle the queue. Please try again.',
+                                    ephemeral: true 
+                                });
+                            } catch (replyError) {
+                                // Silent catch
+                            }
                         }
                         break;
                         
@@ -636,7 +691,7 @@ Here are the main commands you can use:
                 // Silent error for logger
             }
 
-            // Handle filter select menu (legacy support)
+            // Handle filter select menu
             if (interaction.customId === 'filter_select') {
                 const selectedFilter = interaction.values[0];
                 const guild = interaction.guild;
@@ -646,18 +701,29 @@ Here are the main commands you can use:
                 const player = interaction.client.kazagumo.players.get(guild.id);
 
                 if (!player) {
-                    return interaction.reply({ 
+                    await safeReply(interaction, { 
                         content: 'There is no active player in this server!', 
                         ephemeral: true 
-                    }).catch(() => {});
+                    });
+                    return;
+                }
+
+                // Make sure player is playing music
+                if (!player.playing) {
+                    await safeReply(interaction, { 
+                        content: 'There is no music currently playing!', 
+                        ephemeral: true 
+                    });
+                    return;
                 }
 
                 // Check if user is in the same voice channel
                 if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-                    return interaction.reply({ 
+                    await safeReply(interaction, { 
                         content: 'You must be in the same voice channel as the bot to use this!', 
                         ephemeral: true 
-                    }).catch(() => {});
+                    });
+                    return;
                 }
 
                 try {
@@ -666,33 +732,62 @@ Here are the main commands you can use:
 
                     // Handle 'none' selection (clear filters)
                     if (selectedFilter === 'none') {
-                        await clearFilters(player);
-                        await interaction.reply({
-                            content: 'All filters have been cleared!',
-                            ephemeral: true
-                        }).catch(() => {});
+                        // Store the current playback state
+                        const wasPlaying = player.playing;
+                        const currentPosition = player.position;
+                        const currentTrack = player.queue.current;
+                        
+                        // Clear all filters
+                        const success = await clearFilters(player);
+                        
+                        if (success) {
+                            // Ensure music is still playing
+                            if (wasPlaying && !player.playing && currentTrack) {
+                                await player.pause(false);
+                            }
+                            
+                            await safeReply(interaction, {
+                                content: 'All filters have been cleared! Music will continue playing.',
+                                ephemeral: true
+                            });
+                        } else {
+                            await safeReply(interaction, {
+                                content: 'Failed to clear filters, but music will continue playing.',
+                                ephemeral: true
+                            });
+                        }
                     } else {
+                        // Store the current playback state
+                        const wasPlaying = player.playing;
+                        const currentPosition = player.position;
+                        const currentTrack = player.queue.current;
+                        
                         // Apply the selected filter
                         const success = await applyFilter(player, selectedFilter);
 
                         if (success) {
-                            await interaction.reply({
-                                content: `Applied the ${getFilterDisplayName(selectedFilter)} filter!`,
+                            // Ensure music is still playing
+                            if (wasPlaying && !player.playing && currentTrack) {
+                                await player.pause(false);
+                            }
+                            
+                            await safeReply(interaction, {
+                                content: `Applied the ${getFilterDisplayName(selectedFilter)} filter! Music will continue playing.`,
                                 ephemeral: true
-                            }).catch(() => {});
+                            });
                         } else {
-                            await interaction.reply({
-                                content: `Failed to apply the filter. Please try again.`,
+                            await safeReply(interaction, {
+                                content: `Failed to apply the filter. Music will continue playing normally.`,
                                 ephemeral: true
-                            }).catch(() => {});
+                            });
                         }
                     }
                 } catch (error) {
-                    // Silent error handling
-                    await interaction.reply({
-                        content: 'An error occurred while applying the filter. Please try again.',
+                    console.error("Error in filter application:", error);
+                    await safeReply(interaction, {
+                        content: 'An error occurred while applying the filter, but music should continue playing.',
                         ephemeral: true
-                    }).catch(() => {});
+                    });
                 }
             }
         }

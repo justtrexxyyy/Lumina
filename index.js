@@ -207,8 +207,8 @@ client.kazagumo.on('playerStart', async (player, track) => {
         client.inactivityTimeouts.delete(player.guildId);
     }
 
-    // Set bot activity to show currently playing track
-    client.user.setActivity(`${track.title}`, { type: 2 }); // Type 2 is "Listening to"
+    // Set bot activity, but don't show track name (per user request)
+    client.user.setActivity('/help', { type: 2 }); // Type 2 is "Listening to"
     
     const channel = client.channels.cache.get(player.textId);
     if (channel) {
@@ -261,7 +261,7 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('pauseresume')
-                        .setLabel('Pause')
+                        .setLabel('Pause/Resume')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('replay')
@@ -277,6 +277,8 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const filtersSelectMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
                 .setPlaceholder('Select a filter')
+                .setMinValues(1)
+                .setMaxValues(1)
                 .addOptions([
                     {
                         label: 'No Filter',
@@ -367,6 +369,8 @@ client.kazagumo.on('playerStart', async (player, track) => {
             const fallbackFilterMenu = new StringSelectMenuBuilder()
                 .setCustomId('filter_select')
                 .setPlaceholder('Select a filter')
+                .setMinValues(1)
+                .setMaxValues(1)
                 .addOptions([
                     {
                         label: 'No Filter',
@@ -379,6 +383,11 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         value: 'bassboost'
                     },
                     {
+                        label: '8D Audio',
+                        description: 'Creates a spatial rotation effect',
+                        value: '8d'
+                    },
+                    {
                         label: 'Nightcore',
                         description: 'Faster with tremolo effect',
                         value: 'nightcore'
@@ -387,6 +396,21 @@ client.kazagumo.on('playerStart', async (player, track) => {
                         label: 'Vaporwave',
                         description: 'Slowed down effect',
                         value: 'vaporwave'
+                    },
+                    {
+                        label: 'Karaoke',
+                        description: 'Reduces vocals for karaoke',
+                        value: 'karaoke'
+                    },
+                    {
+                        label: 'Low Pass',
+                        description: 'Reduces high frequencies',
+                        value: 'lowpass'
+                    },
+                    {
+                        label: 'Slow Mode',
+                        description: 'Slows down the playback',
+                        value: 'slowmode'
                     }
                 ]);
 
@@ -394,16 +418,20 @@ client.kazagumo.on('playerStart', async (player, track) => {
                 .addComponents(fallbackFilterMenu);
 
             // Add a basic controls row as well for fallback - using combined pause/resume
-            // Initial label is "Pause" because the player is playing when this is created
+            // Using "Pause/Resume" as a toggle button
             const fallbackControlsRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('pauseresume')
-                        .setLabel('Pause')
+                        .setLabel('Pause/Resume')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('skip')
                         .setLabel('Skip')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('shuffle')
+                        .setLabel('Shuffle')
                         .setStyle(ButtonStyle.Secondary)
                 );
 

@@ -109,9 +109,11 @@ module.exports = {
                 let lyrics = '';
                 let displayTitle = trackName || query;
                 let displayArtist = artistName || "Unknown Artist";
+                let lyricSource = "Unknown";
                 
                 console.log(`Searching Genius for lyrics: ${query}`);
                 
+                // STEP 1: Try with full query
                 try {
                     // Search using genius-lyrics NPM package
                     const searches = await geniusClient.songs.search(query);
@@ -134,64 +136,153 @@ module.exports = {
                             
                             // Add source attribution
                             lyrics += `\n\n*Lyrics provided by Genius*`;
+                            lyricSource = "Genius";
                         }
                     }
                 } catch (geniusError) {
-                    console.error('Error with Genius API, falling back to LRCLib:', geniusError);
-                    // Continue to LRCLib fallback
+                    console.error('Error with Genius API using full query:', geniusError);
                 }
                 
-                // If no lyrics found on Genius, fall back to LRCLib
+                // STEP 2: If no lyrics found, try with artist + track as separate entities
+                if (!lyrics && artistName && trackName) {
+                    try {
+                        console.log(`Trying Genius with artist and track name separately: "${artistName}" - "${trackName}"`);
+                        const formattedQuery = `${artistName} ${trackName}`;
+                        const searches = await geniusClient.songs.search(formattedQuery);
+                        
+                        if (searches && searches.length > 0) {
+                            // Get the first result
+                            const firstSong = searches[0];
+                            console.log(`Found song on Genius (second attempt): ${firstSong.title} by ${firstSong.artist.name}`);
+                            
+                            // Get lyrics for this song
+                            const fetchedLyrics = await firstSong.lyrics();
+                            
+                            if (fetchedLyrics) {
+                                displayTitle = firstSong.title;
+                                displayArtist = firstSong.artist.name;
+                                
+                                lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                                lyrics += fetchedLyrics;
+                                lyrics += `\n\n*Lyrics provided by Genius*`;
+                                lyricSource = "Genius";
+                            }
+                        }
+                    } catch (secondGeniusError) {
+                        console.error('Error with Genius API on second attempt:', secondGeniusError);
+                    }
+                }
+                
+                // STEP 3: Fall back to LRCLib
                 if (!lyrics) {
                     console.log('No lyrics found on Genius, trying LRCLib');
                     
-                    // Construct search parameters for LRCLib
-                    const searchParams = new URLSearchParams();
-                    if (artistName) searchParams.append('artist_name', artistName);
-                    if (trackName) searchParams.append('track_name', trackName);
-                    
-                    // Call the LRCLib API
-                    const searchUrl = `${LRCLIB_API_URL}?${searchParams.toString()}`;
-                    console.log(`LRCLib API URL: ${searchUrl}`);
-                    
-                    const response = await fetch(searchUrl);
-                    if (!response.ok) {
-                        throw new Error(`LRCLib API returned ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const results = await response.json();
-                    
-                    if (!results || results.length === 0) {
-                        // No lyrics found in either API, create a helpful message
-                        lyrics = `No lyrics found for **${displayTitle}** by **${displayArtist}**\n\n`;
-                        lyrics += `You can try to find lyrics for this song at:\n`;
-                        lyrics += `• Genius: https://genius.com/search?q=${encodeURIComponent(query)}\n`;
-                        lyrics += `• AZLyrics: https://search.azlyrics.com/search.php?q=${encodeURIComponent(query)}\n`;
-                        lyrics += `• LRCLib: https://lrclib.net/search?q=${encodeURIComponent(query)}\n`;
-                    } else {
-                        // Use the first result
-                        const result = results[0];
-                        displayTitle = result.trackName || displayTitle;
-                        displayArtist = result.artistName || displayArtist;
+                    try {
+                        // Construct search parameters for LRCLib
+                        const searchParams = new URLSearchParams();
+                        if (artistName) searchParams.append('artist_name', artistName);
+                        if (trackName) searchParams.append('track_name', trackName);
                         
-                        // Create a header with song info
-                        lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                        // Call the LRCLib API
+                        const searchUrl = `${LRCLIB_API_URL}?${searchParams.toString()}`;
+                        console.log(`LRCLib API URL: ${searchUrl}`);
                         
-                        if (result.plainLyrics) {
-                            lyrics += result.plainLyrics;
-                        } else if (result.syncedLyrics) {
-                            // Convert synced lyrics to plain text by removing timestamps
-                            lyrics += result.syncedLyrics
-                                .split('\n')
-                                .map(line => line.replace(/\[\d+:\d+\.\d+\]/g, ''))
-                                .join('\n');
-                        } else {
-                            lyrics += "Lyrics were found but could not be displayed.";
+                        const response = await fetch(searchUrl);
+                        if (!response.ok) {
+                            throw new Error(`LRCLib API returned ${response.status}: ${response.statusText}`);
                         }
                         
-                        // Add source attribution
-                        lyrics += `\n\n*Lyrics provided by LRCLib*`;
+                        const results = await response.json();
+                        
+                        if (results && results.length > 0) {
+                            // Use the first result
+                            const result = results[0];
+                            displayTitle = result.trackName || displayTitle;
+                            displayArtist = result.artistName || displayArtist;
+                            
+                            // Create a header with song info
+                            lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                            
+                            if (result.plainLyrics) {
+                                lyrics += result.plainLyrics;
+                            } else if (result.syncedLyrics) {
+                                // Convert synced lyrics to plain text by removing timestamps
+                                lyrics += result.syncedLyrics
+                                    .split('\n')
+                                    .map(line => line.replace(/\[\d+:\d+\.\d+\]/g, ''))
+                                    .join('\n');
+                            } else {
+                                lyrics += "Lyrics were found but could not be displayed.";
+                            }
+                            
+                            // Add source attribution
+                            lyrics += `\n\n*Lyrics provided by LRCLib*`;
+                            lyricSource = "LRCLib";
+                        }
+                    } catch (lrcLibError) {
+                        console.error('Error with LRCLib API:', lrcLibError);
                     }
+                }
+                
+                // STEP 4: If still no lyrics, try with artist-only search
+                if (!lyrics && artistName) {
+                    try {
+                        console.log(`Trying with artist name only: "${artistName}"`);
+                        const searches = await geniusClient.songs.search(artistName);
+                        
+                        if (searches && searches.length > 0) {
+                            // Try to find the best match by title
+                            let bestMatch = null;
+                            
+                            if (trackName) {
+                                // Find song with closest title match
+                                const trackNameLower = trackName.toLowerCase();
+                                for (const song of searches.slice(0, 5)) { // Check first 5 results
+                                    if (song.title.toLowerCase().includes(trackNameLower)) {
+                                        bestMatch = song;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // If no match found, use the first result
+                            if (!bestMatch) bestMatch = searches[0];
+                            
+                            console.log(`Found song on Genius (artist-only): ${bestMatch.title} by ${bestMatch.artist.name}`);
+                            
+                            // Get lyrics for this song
+                            const fetchedLyrics = await bestMatch.lyrics();
+                            
+                            if (fetchedLyrics) {
+                                displayTitle = bestMatch.title;
+                                displayArtist = bestMatch.artist.name;
+                                
+                                lyrics = `**${displayTitle}** by **${displayArtist}**\n\n`;
+                                lyrics += fetchedLyrics;
+                                lyrics += `\n\n*Lyrics provided by Genius (artist match)*`;
+                                lyricSource = "Genius (Artist Match)";
+                            }
+                        }
+                    } catch (artistOnlyError) {
+                        console.error('Error with Genius API using artist only:', artistOnlyError);
+                    }
+                }
+                
+                // STEP 5: If still no lyrics, create a helpful message
+                if (!lyrics) {
+                    lyrics = `No lyrics found for **${displayTitle}** by **${displayArtist}**\n\n`;
+                    lyrics += `I tried searching with:\n`;
+                    
+                    if (query) lyrics += `• Full query: "${query}"\n`;
+                    if (artistName && trackName) lyrics += `• Artist + Track: "${artistName}" - "${trackName}"\n`;
+                    if (artistName) lyrics += `• Artist only: "${artistName}"\n`;
+                    
+                    lyrics += `\nYou can try to find lyrics for this song at:\n`;
+                    lyrics += `• Genius: https://genius.com/search?q=${encodeURIComponent(query || `${artistName} ${trackName}`.trim())}\n`;
+                    lyrics += `• AZLyrics: https://search.azlyrics.com/search.php?q=${encodeURIComponent(query || `${artistName} ${trackName}`.trim())}\n`;
+                    lyrics += `• LRCLib: https://lrclib.net/search?q=${encodeURIComponent(query || `${artistName} ${trackName}`.trim())}\n`;
+                    
+                    lyricSource = "Not Found";
                 }
                 
                 // Split lyrics into chunks if they're too long for Discord embeds
@@ -393,6 +484,33 @@ function processSongTitle(title) {
             result.processedTitle = parts[1].trim();
             return result;
         }
+    }
+    
+    // Step 3: Check for "Title by Artist" format (common in some sources)
+    if (processed.includes(" by ")) {
+        const parts = processed.split(" by ");
+        if (parts.length >= 2) {
+            result.processedTitle = parts[0].trim();
+            // The rest could be complex like "Artist1 and Artist2 and ..."
+            result.extractedArtist = parts.slice(1).join(" by ").trim();
+            return result;
+        }
+    }
+    
+    // Step 4: Check for "Artist - Topic" format (common in YouTube auto-generated channels)
+    if (processed.includes(" - Topic")) {
+        result.extractedArtist = processed.replace(" - Topic", "").trim();
+        // Since we don't have a title here, we'll use the original without "- Topic"
+        result.processedTitle = originalTitle.replace(/ - Topic/i, "").trim();
+        return result;
+    }
+    
+    // Step 5: Check for "Title (feat. Artist)" format
+    const featMatch = originalTitle.match(/(.+?)(?:\(|\[|\s)feat(?:uring|\.)?\s+(.+?)(?:\)|\]|$)/i);
+    if (featMatch) {
+        result.processedTitle = featMatch[1].trim();
+        result.extractedArtist = featMatch[2].trim();
+        return result;
     }
     
     // If we get here, we couldn't parse in a structured way
