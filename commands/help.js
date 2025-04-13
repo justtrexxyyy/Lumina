@@ -47,6 +47,7 @@ module.exports = {
             { name: 'stats', description: 'View bot statistics', category: 'Utility' },
             { name: 'invite', description: 'Invite bot to server', category: 'Utility' },
             { name: 'support', description: 'Join support server', category: 'Utility' },
+            { name: 'vote', description: 'Vote for the bot on listing sites', category: 'Utility' },
             { name: 'help', description: 'Display this help menu', category: 'Utility' }
         ];
         

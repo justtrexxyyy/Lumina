@@ -359,18 +359,18 @@ module.exports = {
                             const userVoiceChannel = member.voice.channel;
                             
                             if (!userVoiceChannel) {
-                                await interaction.reply({ 
-                                    content: 'You need to be in a voice channel to stop the music!',
+                                await safeReply(interaction, { 
+                                    content: 'You need to be in a voice channel to stop playback.',
                                     ephemeral: true 
-                                }).catch(() => {});
+                                });
                                 return;
                             }
                             
                             if (userVoiceChannel.id !== player.voiceId) {
-                                await interaction.reply({ 
-                                    content: 'You need to be in the same voice channel as the bot to stop the music!',
+                                await safeReply(interaction, { 
+                                    content: 'You need to be in the same voice channel to stop playback.',
                                     ephemeral: true 
-                                }).catch(() => {});
+                                });
                                 return;
                             }
                             
@@ -395,20 +395,20 @@ module.exports = {
                             }
                             
                             // Send success message
-                            await interaction.reply({ 
-                                content: 'Stopped playback and cleared the queue!',
+                            await safeReply(interaction, { 
+                                content: 'Stopped playback.',
                                 ephemeral: true 
-                            }).catch(() => {});
+                            });
                         } catch (error) {
                             // Log error but don't break functionality
                             console.error("Error in stop button:", error.message);
                             
                             // Try to send a friendly error message
                             try {
-                                await interaction.reply({ 
-                                    content: 'Failed to stop playback. Please try again or use the /stop command.',
+                                await safeReply(interaction, { 
+                                    content: 'Failed to stop playback. Please try again.',
                                     ephemeral: true 
-                                }).catch(() => {});
+                                });
                             } catch (replyError) {
                                 // Silent catch
                             }
@@ -668,12 +668,13 @@ Here are the main commands you can use:
 • \`/skip\` - Skip the current track
 • \`/stop\` - Stop playback and clear queue
 • \`/247\` - Toggle 24/7 mode
+• \`/vote\` - Vote for Audic on bot list sites
 • \`/help\` - Show detailed help`;
 
-                            await interaction.reply({
+                            await safeReply(interaction, {
                                 content: helpText,
                                 ephemeral: true
-                            }).catch(() => {});
+                            });
                         } catch (error) {
                             // Silent error handling
                         }

@@ -9,7 +9,7 @@ module.exports = {
     createEmbed: (options = {}) => {
         return {
             title: options.title || 'Music',
-            description: options.description || 'No description provided',
+            description: options.description === undefined ? 'No description provided' : options.description,
             fields: options.fields || [],
             color: parseInt((options.color || config.embedColor).replace('#', ''), 16),
             footer: options.footer ? {

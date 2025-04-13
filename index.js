@@ -884,7 +884,9 @@ Here are the main commands you can use:
             // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
                 return interaction.reply({ 
-                    content: 'You must be in the same voice channel as the bot to use this!', 
+                    content: interaction.customId === "stop" 
+                        ? "You need to be in the same voice channel to stop playback." 
+                        : "You must be in the same voice channel as the bot to use this!", 
                     ephemeral: true 
                 });
             }
@@ -1028,7 +1030,7 @@ Here are the main commands you can use:
                 case 'stop':
                     player.destroy();
                     return interaction.reply({ 
-                        content: 'Stopped playback and cleared the queue!', 
+                        content: 'Stopped playback.', 
                         ephemeral: true 
                     });
             }
@@ -1049,11 +1051,11 @@ Here are the main commands you can use:
                     ephemeral: true 
                 });
             }
-
+            
             // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
                 return interaction.reply({ 
-                    content: 'You must be in the same voice channel as the bot to use this!', 
+                    content: "You must be in the same voice channel as the bot to use filters!", 
                     ephemeral: true 
                 });
             }

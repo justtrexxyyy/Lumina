@@ -6,7 +6,7 @@ const os = require('os');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stats')
-        .setDescription('View statistics'),
+        .setDescription('View bot statistics'),
     
     async execute(interaction) {
         const { client } = interaction;
@@ -84,6 +84,7 @@ module.exports = {
         // Create and send the stats embed
         const statsEmbed = createEmbed({
             title: `${config.botName} Statistics`,
+            description: "", // Explicitly set to empty string to ensure a blank description
             fields: [
                 {
                     name: 'Bot Stats',
