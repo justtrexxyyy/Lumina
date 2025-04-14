@@ -1029,10 +1029,40 @@ Here are the main commands you can use:
                     break;
                     
                 case 'stop':
+                    // Get current track to check requestor
+                    const currentTrack = player.queue.current;
+                    if (!currentTrack) {
+                        return interaction.reply({
+                            content: 'No track is currently playing!',
+                            ephemeral: true
+                        });
+                    }
+
+                    // Check if user is the requestor
+                    if (currentTrack.requester.id !== interaction.user.id) {
+                        return interaction.reply({
+                            content: 'Only the person who requested this song can stop it!',
+                            ephemeral: true
+                        });
+                    }
+
+                    // Send queue end message before destroying
+                    const channel = client.channels.cache.get(player.textId);
+                    if (channel) {
+                        const { createEmbed } = require('./utils/embeds');
+                        const queueEndEmbed = createEmbed({
+                            title: 'Queue Ended',
+                            description: `Playback stopped by ${interaction.user.tag}`,
+                            color: '#ff0000'
+                        });
+                        await channel.send({ embeds: [queueEndEmbed] });
+                    }
+
+                    // Destroy player and reply
                     player.destroy();
-                    return interaction.reply({ 
-                        content: 'Stopped playback.', 
-                        ephemeral: true 
+                    return interaction.reply({
+                        content: `Successfully stopped playback and cleared the queue.`,
+                        ephemeral: true
                     });
             }
         }
