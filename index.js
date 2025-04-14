@@ -1088,23 +1088,59 @@ Here are the main commands you can use:
                     }
 
                     try {
+                        // Track if we've already shown the queue end message
+                        let queueEndMessageShown = false;
+                        
                         // Send queue end message before destroying
-                        const channel = client.channels.cache.get(player.textId);
-                        if (channel) {
-                            const { createEmbed } = require('./utils/embeds');
-                            const queueEndEmbed = createEmbed({
-                                title: 'Queue Ended',
-                                description: `Music playback has been stopped by ${interaction.user}`,
-                                color: '#ff0000'
-                            });
-                            await channel.send({ embeds: [queueEndEmbed] });
+                        try {
+                            const channel = client.channels.cache.get(player.textId);
+                            if (channel) {
+                                const { createEmbed } = require('./utils/embeds');
+                                const queueEndEmbed = createEmbed({
+                                    title: 'Queue Ended',
+                                    description: `Music playback has been stopped by ${interaction.user}`,
+                                    color: '#ff0000'
+                                });
+                                await channel.send({ embeds: [queueEndEmbed] });
+                                queueEndMessageShown = true;
+                            }
+                        } catch (messageError) {
+                            console.error("Error sending queue end message:", messageError);
                         }
 
-                        // Check if player is still active before destroying
+                        // We'll destroy the player only if it hasn't been destroyed yet and exists
                         if (player && !player.destroyed) {
-                            player.destroy();
+                            try {
+                                console.log("Executing player.destroy()");
+                                // Let's use a custom approach to destroy
+                                await player.queue.clear(); // First clear the queue
+                                
+                                if (player.node && player.node.send) {
+                                    // Attempt to send a stop instruction to the node
+                                    try {
+                                        await player.node.send({
+                                            op: 'stop',
+                                            guildId: player.guildId
+                                        });
+                                        console.log('Stop signal sent to node');
+                                    } catch (stopError) {
+                                        console.log('Could not send stop signal:', stopError.message);
+                                    }
+                                }
+                                
+                                if (!player.destroyed) {
+                                    player.destroy();
+                                }
+                                console.log("Player destroyed successfully");
+                            } catch (destroyError) {
+                                console.log("Error destroying player (handled):", destroyError.message);
+                                // Player is likely already destroyed, so we'll continue
+                            }
+                        } else {
+                            console.log("Player already destroyed or doesn't exist");
                         }
                         
+                        // Always respond to the interaction
                         return interaction.reply({
                             content: `Music playback has been stopped and the queue has been cleared.`,
                             ephemeral: true
