@@ -881,12 +881,15 @@ Here are the main commands you can use:
                 });
             }
             
-            // Check if user is in the same voice channel
+            // Check if user is in the same voice channel (except for stop button, which has its own validation)
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-                return interaction.reply({ 
-                    content: "❌ You must be in the same voice channel as the bot to use the music controls!", 
-                    ephemeral: true 
-                });
+                // Skip this check for stop button as it has its own specific validation for requestor
+                if (interaction.customId !== 'stop') {
+                    return interaction.reply({ 
+                        content: "You must be in the same voice channel as the bot to use the music controls!", 
+                        ephemeral: true 
+                    });
+                }
             }
             
             // Handle each button type
@@ -1039,7 +1042,7 @@ Here are the main commands you can use:
                     // Check if user is the requestor
                     if (trackToStop.requester.id !== interaction.user.id) {
                         return interaction.reply({
-                            content: '❌ You cannot use this button! Only the person who requested this song can stop it.',
+                            content: 'You cannot use this button! Only the person who requested this song can stop it.',
                             ephemeral: true
                         });
                     }
@@ -1059,7 +1062,7 @@ Here are the main commands you can use:
                     // Destroy player and reply
                     player.destroy();
                     return interaction.reply({
-                        content: `✅ Music playback has been stopped and the queue has been cleared.`,
+                        content: `Music playback has been stopped and the queue has been cleared.`,
                         ephemeral: true
                     });
             }
@@ -1084,7 +1087,7 @@ Here are the main commands you can use:
             // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
                 return interaction.reply({ 
-                    content: "❌ You must be in the same voice channel as the bot to use filters!", 
+                    content: "You must be in the same voice channel as the bot to use filters!", 
                     ephemeral: true 
                 });
             }
