@@ -1041,7 +1041,7 @@ Here are the main commands you can use:
                     // Check if user is the requestor
                     if (trackToStop.requester.id !== interaction.user.id) {
                         return interaction.reply({
-                            content: 'Only the person who requested this song can stop it!',
+                            content: '❌ You cannot use this button! Only the person who requested this song can stop it.',
                             ephemeral: true
                         });
                     }
@@ -1052,7 +1052,7 @@ Here are the main commands you can use:
                         const { createEmbed } = require('./utils/embeds');
                         const queueEndEmbed = createEmbed({
                             title: 'Queue Ended',
-                            description: `Playback stopped by ${interaction.user.tag}`,
+                            description: `Music playback has been stopped by ${interaction.user}`,
                             color: '#ff0000'
                         });
                         await channel.send({ embeds: [queueEndEmbed] });
@@ -1061,7 +1061,7 @@ Here are the main commands you can use:
                     // Destroy player and reply
                     player.destroy();
                     return interaction.reply({
-                        content: `Successfully stopped playback and cleared the queue.`,
+                        content: `✅ Music playback has been stopped and the queue has been cleared.`,
                         ephemeral: true
                     });
             }
