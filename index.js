@@ -1030,8 +1030,8 @@ Here are the main commands you can use:
                     
                 case 'stop':
                     // Get current track to check requestor
-                    const currentTrack = player.queue.current;
-                    if (!currentTrack) {
+                    const trackToStop = player.queue.current;
+                    if (!trackToStop) {
                         return interaction.reply({
                             content: 'No track is currently playing!',
                             ephemeral: true
@@ -1039,7 +1039,7 @@ Here are the main commands you can use:
                     }
 
                     // Check if user is the requestor
-                    if (currentTrack.requester.id !== interaction.user.id) {
+                    if (trackToStop.requester.id !== interaction.user.id) {
                         return interaction.reply({
                             content: 'Only the person who requested this song can stop it!',
                             ephemeral: true
