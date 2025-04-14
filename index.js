@@ -1128,8 +1128,18 @@ Here are the main commands you can use:
                                     }
                                 }
                                 
-                                if (!player.destroyed) {
-                                    player.destroy();
+                                // DO NOT directly call player.destroy() as it may cause race conditions
+                                // Instead, let's just clear the queue and disconnect
+                                try {
+                                    if (player.voiceId && client.guilds.cache.get(player.guildId)) {
+                                        const guild = client.guilds.cache.get(player.guildId);
+                                        if (guild && guild.members && guild.members.me && guild.members.me.voice.channel) {
+                                            await guild.members.me.voice.disconnect();
+                                            console.log("Disconnected from voice channel");
+                                        }
+                                    }
+                                } catch (disconnectError) {
+                                    console.log("Error disconnecting from voice:", disconnectError.message);
                                 }
                                 console.log("Player destroyed successfully");
                             } catch (destroyError) {
