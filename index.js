@@ -881,15 +881,21 @@ Here are the main commands you can use:
                 });
             }
             
-            // Check if user is in the same voice channel (except for stop button, which has its own validation)
+            // Check if user is in the same voice channel
             if (!member.voice.channel || member.voice.channel.id !== player.voiceId) {
-                // Skip this check for stop button as it has its own specific validation for requestor
-                if (interaction.customId !== 'stop') {
-                    return interaction.reply({ 
-                        content: "You must be in the same voice channel as the bot to use the music controls!", 
-                        ephemeral: true 
-                    });
-                }
+                return interaction.reply({ 
+                    content: "You must be in the same voice channel as the bot to use the music controls!", 
+                    ephemeral: true 
+                });
+            }
+            
+            // Check if user is the requestor for all music control buttons
+            const currentTrack = player.queue.current;
+            if (currentTrack && currentTrack.requester.id !== interaction.user.id) {
+                return interaction.reply({
+                    content: 'You cannot use this button! Only the person who requested this song can control it.',
+                    ephemeral: true
+                });
             }
             
             // Handle each button type
@@ -1030,19 +1036,11 @@ Here are the main commands you can use:
                     break;
                     
                 case 'stop':
-                    // Get current track to check requestor
+                    // We already checked if user is the requestor with the general check above
                     const trackToStop = player.queue.current;
                     if (!trackToStop) {
                         return interaction.reply({
                             content: 'No track is currently playing!',
-                            ephemeral: true
-                        });
-                    }
-
-                    // Check if user is the requestor
-                    if (trackToStop.requester.id !== interaction.user.id) {
-                        return interaction.reply({
-                            content: 'You cannot use this button! Only the person who requested this song can stop it.',
                             ephemeral: true
                         });
                     }
@@ -1089,6 +1087,15 @@ Here are the main commands you can use:
                 return interaction.reply({ 
                     content: "You must be in the same voice channel as the bot to use filters!", 
                     ephemeral: true 
+                });
+            }
+            
+            // Check if user is the requestor for filter controls
+            const currentTrack = player.queue.current;
+            if (currentTrack && currentTrack.requester.id !== interaction.user.id) {
+                return interaction.reply({
+                    content: 'You cannot use this menu! Only the person who requested this song can apply filters.',
+                    ephemeral: true
                 });
             }
 
