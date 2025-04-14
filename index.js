@@ -895,6 +895,15 @@ Here are the main commands you can use:
             // Handle each button type
             switch (interaction.customId) {
                 case 'pause':
+                    // Check if user is the requestor for pause button
+                    const pauseTrack = player.queue.current;
+                    if (pauseTrack && pauseTrack.requester.id !== interaction.user.id) {
+                        return interaction.reply({
+                            content: 'You cannot use this button! Only the person who requested this song can control it.',
+                            ephemeral: true
+                        });
+                    }
+                
                     // Explicitly pause the music
                     console.log("Pause button clicked, pausing music.");
                     
@@ -911,6 +920,15 @@ Here are the main commands you can use:
                     });
                     
                 case 'resume':
+                    // Check if user is the requestor for resume button
+                    const resumeTrack = player.queue.current;
+                    if (resumeTrack && resumeTrack.requester.id !== interaction.user.id) {
+                        return interaction.reply({
+                            content: 'You cannot use this button! Only the person who requested this song can control it.',
+                            ephemeral: true
+                        });
+                    }
+                
                     // Explicitly resume the music
                     console.log("Resume button clicked, resuming music.");
                     
@@ -942,6 +960,15 @@ Here are the main commands you can use:
                     });
                     
                 case 'skip':
+                    // Check if user is the requestor for skip button
+                    const skipTrack = player.queue.current;
+                    if (skipTrack && skipTrack.requester.id !== interaction.user.id) {
+                        return interaction.reply({
+                            content: 'You cannot use this button! Only the person who requested this song can control it.',
+                            ephemeral: true
+                        });
+                    }
+                    
                     player.skip();
                     return interaction.reply({ 
                         content: 'Skipped to the next track!', 
@@ -951,39 +978,60 @@ Here are the main commands you can use:
                 case 'replay':
                     // Stop the current track and restart it
                     const currentTrack = player.queue.current;
-                    if (currentTrack) {
-                        // Stop the player and restart the same track
-                        await player.seek(0);
-                        await player.pause(true); // Pause first
-                        setTimeout(() => {
-                            player.pause(false); // Resume after a short delay
-                        }, 500);
-                        
-                        return interaction.reply({ 
-                            content: 'Stopped and restarted the current track!', 
-                            ephemeral: true 
-                        });
-                    } else {
+                    if (!currentTrack) {
                         return interaction.reply({ 
                             content: 'No track is currently playing!', 
                             ephemeral: true 
                         });
                     }
                     
+                    // Check if user is the requestor for replay button
+                    if (currentTrack.requester.id !== interaction.user.id) {
+                        return interaction.reply({
+                            content: 'You cannot use this button! Only the person who requested this song can control it.',
+                            ephemeral: true
+                        });
+                    }
+                    
+                    // Stop the player and restart the same track
+                    await player.seek(0);
+                    await player.pause(true); // Pause first
+                    setTimeout(() => {
+                        player.pause(false); // Resume after a short delay
+                    }, 500);
+                    
+                    return interaction.reply({ 
+                        content: 'Stopped and restarted the current track!', 
+                        ephemeral: true 
+                    });
+                    
                 case 'shuffle':
                     // Get current track
                     const currentSong = player.queue.current;
+                    if (!currentSong) {
+                        return interaction.reply({ 
+                            content: 'No track is currently playing!', 
+                            ephemeral: true 
+                        });
+                    }
                     
-                    // If there's a current song, include it in shuffle regardless of queue length
-                    if (currentSong) {
-                        // Even if there are no additional tracks, we'll just give a specific message
-                        if (player.queue.length === 0) {
-                            return interaction.reply({ 
-                                content: 'No additional tracks in queue. Add more songs to create a shuffle mix!', 
-                                ephemeral: true 
-                            });
-                        }
-                        
+                    // Check if user is the requestor for shuffle button
+                    if (currentSong.requester.id !== interaction.user.id) {
+                        return interaction.reply({
+                            content: 'You cannot use this button! Only the person who requested this song can control it.',
+                            ephemeral: true
+                        });
+                    }
+                    
+                    // Even if there are no additional tracks, we'll just give a specific message
+                    if (player.queue.length === 0) {
+                        return interaction.reply({ 
+                            content: 'No additional tracks in queue. Add more songs to create a shuffle mix!', 
+                            ephemeral: true 
+                        });
+                    }
+                    
+                    try {
                         // First shuffle the upcoming tracks
                         player.queue.shuffle();
                         
@@ -1000,30 +1048,22 @@ Here are the main commands you can use:
                         player.queue.clear();
                         player.queue.add(tracksToShuffle.slice(1)); // Add all except first
                         
-                        // Skip to play the first track from shuffled list
-                        try {
-                            // Only skip if the first track is different from current
-                            if (tracksToShuffle[0].uri !== currentSong.uri) {
-                                // Add the first shuffled track to the beginning of the queue and skip
-                                player.queue.add(tracksToShuffle[0], 0); // Insert at position 0
-                                player.skip();
-                            }
-                            
-                            return interaction.reply({ 
-                                content: 'Shuffled all tracks including the current one!', 
-                                ephemeral: true 
-                            });
-                        } catch (error) {
-                            console.error("Error during shuffle skip:", error);
-                            // If skip fails, at least we shuffled the queue
-                            return interaction.reply({ 
-                                content: 'Shuffled the queue, but couldn\'t change the current track.', 
-                                ephemeral: true 
-                            });
+                        // Only skip if the first track is different from current
+                        if (tracksToShuffle[0].uri !== currentSong.uri) {
+                            // Add the first shuffled track to the beginning of the queue and skip
+                            player.queue.add(tracksToShuffle[0], 0); // Insert at position 0
+                            player.skip();
                         }
-                    } else {
+                        
                         return interaction.reply({ 
-                            content: 'No track is currently playing!', 
+                            content: 'Shuffled all tracks including the current one!', 
+                            ephemeral: true 
+                        });
+                    } catch (error) {
+                        console.error("Error during shuffle:", error);
+                        // If shuffle fails, send an error message
+                        return interaction.reply({ 
+                            content: 'Failed to shuffle the queue. Please try again.',
                             ephemeral: true 
                         });
                     }
@@ -1047,24 +1087,35 @@ Here are the main commands you can use:
                         });
                     }
 
-                    // Send queue end message before destroying
-                    const channel = client.channels.cache.get(player.textId);
-                    if (channel) {
-                        const { createEmbed } = require('./utils/embeds');
-                        const queueEndEmbed = createEmbed({
-                            title: 'Queue Ended',
-                            description: `Music playback has been stopped by ${interaction.user}`,
-                            color: '#ff0000'
-                        });
-                        await channel.send({ embeds: [queueEndEmbed] });
-                    }
+                    try {
+                        // Send queue end message before destroying
+                        const channel = client.channels.cache.get(player.textId);
+                        if (channel) {
+                            const { createEmbed } = require('./utils/embeds');
+                            const queueEndEmbed = createEmbed({
+                                title: 'Queue Ended',
+                                description: `Music playback has been stopped by ${interaction.user}`,
+                                color: '#ff0000'
+                            });
+                            await channel.send({ embeds: [queueEndEmbed] });
+                        }
 
-                    // Destroy player and reply
-                    player.destroy();
-                    return interaction.reply({
-                        content: `Music playback has been stopped and the queue has been cleared.`,
-                        ephemeral: true
-                    });
+                        // Check if player is still active before destroying
+                        if (player && !player.destroyed) {
+                            player.destroy();
+                        }
+                        
+                        return interaction.reply({
+                            content: `Music playback has been stopped and the queue has been cleared.`,
+                            ephemeral: true
+                        });
+                    } catch (error) {
+                        console.error("Error in stop button:", error);
+                        return interaction.reply({
+                            content: `Music playback has been stopped.`,
+                            ephemeral: true
+                        });
+                    }
             }
         }
     } else if (interaction.isStringSelectMenu()) {
