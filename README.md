@@ -13,30 +13,8 @@ A feature-rich music bot for Discord that utilizes **discord.js**, **shoukaku,ka
    
 
 2. **Set up environment variables**  
-   - Create a `.env` file in the root directory.
-   - Add the following variables:
-     ```
-     # Discord Bot Credentials
-DISCORD_TOKEN=
-CLIENT_ID=enter discord client id here
-BOT_LOGO=enter bot logo url here
-
-# Lavalink Server Configuration (These are pre-configured, updated to match config.js)
-LAVALINK_HOST=lavalink.jirayu.net
-LAVALINK_PORT=13592
-LAVALINK_PASSWORD=youshallnotpass
-
-# Support Server URL
-SUPPORT_SERVER=enter_support_server_url_here
-
-# Logging Webhook URL
-LOG_WEBHOOK_URL=enter_webhook_url_here
-
-# Genius Lyrics API (Optional for enhanced lyrics functionality)
-GENIUS_API_KEY=r1b1s6MdG248bSJFRNX_Mod4S65TbYmaA4AGUq-ZRhOOB-mAog4LT2k_jq-ernr3uI51xovhcfAcgZrFxXGnsw
-GENIUS_CLIENT_TOKEN=hbbeREvRCsp5XZwDSSNxWM5zmp-zxl56WpVl0Ru3ZayHqUbV6jJEf2DtslxMwlQc
-GENIUS_ACCESS_TOKEN=4ND2o9JGeD1yQDGPr-u4Q_2-izUFyx7IgpXRncMVfCIQF6byD4q-L1r2GjQZ0MLa
-     ```
+   - Open a `.env` file in the root directory.
+   - Add the all variables:
 
 3. **Install dependencies**  
    Run the following command:
