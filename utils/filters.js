@@ -105,31 +105,27 @@ function getFilterDisplayName(filterName) {
 async function applyFilter(player, filterName) {
     try {
         const filterConfig = getFilter(filterName);
-        
-        if (!filterConfig) {
-            return false;
-        }
-        
-        // Make sure music continues playing
-        const wasPlaying = player.playing;
-        const currentPosition = player.position;
-        
+        if (!filterConfig) return false;
+
         // Store the active filter name on the player
         player.data.set('activeFilter', filterName);
-        
-        // Apply filter to the player - using filters property
-        await player.shoukaku.setFilters(filterConfig);
-        
-        // Ensure playback continues if it was playing before
-        if (wasPlaying && !player.playing) {
-            try {
-                // Resume playback if it was stopped by filter application
-                await player.pause(false);
-            } catch (resumeError) {
-                console.error("Error resuming after filter:", resumeError);
-            }
+
+        // Optimization: Only send filter update if config is different
+        const lastConfig = player.data.get('lastFilterConfig');
+        const newConfigStr = JSON.stringify(filterConfig);
+        if (lastConfig === newConfigStr) {
+            // No change, skip sending
+            return true;
         }
-        
+        player.data.set('lastFilterConfig', newConfigStr);
+
+        // Timestamp for performance logging
+        const start = Date.now();
+        await player.shoukaku.setFilters(filterConfig);
+        const elapsed = Date.now() - start;
+        if (elapsed > 500) {
+            console.warn(`[Filter] Application took ${elapsed}ms for ${filterName}`);
+        }
         return true;
     } catch (error) {
         console.error(`Error applying filter ${filterName}:`, error);
@@ -144,26 +140,14 @@ async function applyFilter(player, filterName) {
  */
 async function clearFilters(player) {
     try {
-        // Check if music was playing before clearing filters
-        const wasPlaying = player.playing;
-        const currentPosition = player.position;
-        
-        // Remove the active filter reference
         player.data.delete('activeFilter');
-        
-        // Reset all filters - using empty filter object
+        player.data.delete('lastFilterConfig');
+        const start = Date.now();
         await player.shoukaku.setFilters({});
-        
-        // Ensure playback continues if it was playing before
-        if (wasPlaying && !player.playing) {
-            try {
-                // Resume playback if it was stopped by filter clearing
-                await player.pause(false);
-            } catch (resumeError) {
-                console.error("Error resuming after clearing filters:", resumeError);
-            }
+        const elapsed = Date.now() - start;
+        if (elapsed > 500) {
+            console.warn(`[Filter] Clearing took ${elapsed}ms`);
         }
-        
         return true;
     } catch (error) {
         console.error('Error clearing filters:', error);

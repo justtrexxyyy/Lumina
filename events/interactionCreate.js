@@ -151,14 +151,87 @@ module.exports = {
                 switch (interaction.customId) {
                     case 'replay':
                         try {
-                            // Seek to position 0 (beginning of the track)
+                            // Get the current track
+                            const currentTrack = player.queue.current;
+                            if (!currentTrack) {
+                                await interaction.reply({
+                                    content: 'No track is currently playing!',
+                                    ephemeral: true
+                                }).catch(() => {});
+                                break;
+                            }
+
+                            // Always unpause before seeking
+                            if (player.paused) {
+                                await player.pause(false);
+                                await new Promise(res => setTimeout(res, 100));
+                            }
+                            // Always seek to 0 (restart track)
                             await player.seek(0);
-                            await interaction.reply({ 
-                                content: 'Replaying current track from the beginning!',
-                                ephemeral: true 
+                            await new Promise(res => setTimeout(res, 100));
+                            // Explicitly call play to force playback
+                            await player.play();
+                            await new Promise(res => setTimeout(res, 200));
+
+                            // Fallback: if still not playing, unpause and play again
+                            if (!player.playing) {
+                                await player.pause(false);
+                                await player.play();
+                            }
+
+                            // Refresh the Now Playing UI controls if possible
+                            const messageInfo = client.nowPlayingMessages.get(guild.id);
+                            if (messageInfo) {
+                                try {
+                                    const messageChannel = client.channels.cache.get(messageInfo.channelId);
+                                    if (messageChannel) {
+                                        const message = await messageChannel.messages.fetch(messageInfo.messageId).catch(() => null);
+                                        if (message && message.editable) {
+                                            const updatedRows = [];
+                                            for (const row of message.components) {
+                                                const newRow = new ActionRowBuilder();
+                                                const newComponents = [];
+                                                for (const component of row.components) {
+                                                    if (component.type === 2) { // Button type
+                                                        const newButton = new ButtonBuilder()
+                                                            .setCustomId(component.customId)
+                                                            .setStyle(component.style)
+                                                            .setLabel(component.label);
+                                                        newComponents.push(newButton);
+                                                    } else if (component.type === 3) { // Select menu type
+                                                        const selectMenu = new StringSelectMenuBuilder()
+                                                            .setCustomId(component.customId)
+                                                            .setPlaceholder(component.placeholder)
+                                                            .addOptions(component.options);
+                                                        newRow.addComponents(selectMenu);
+                                                    }
+                                                }
+                                                if (newComponents.length > 0) {
+                                                    newRow.addComponents(newComponents);
+                                                }
+                                                if (newRow.components && newRow.components.length > 0) {
+                                                    updatedRows.push(newRow);
+                                                }
+                                            }
+                                            if (updatedRows.length > 0) {
+                                                await message.edit({ components: updatedRows }).catch(() => {});
+                                            }
+                                        }
+                                    }
+                                } catch (error) {
+                                    // Silent error
+                                }
+                            }
+
+                            await interaction.reply({
+                                content: `Replaying track: **${currentTrack.title}**`,
+                                ephemeral: true
                             }).catch(() => {});
                         } catch (error) {
-                            // Silent error handling
+                            await safeReply(interaction, {
+                                content: 'Failed to replay the track. Please try again.',
+                                ephemeral: true
+                            });
                         }
                         break;
                         
@@ -168,29 +241,37 @@ module.exports = {
                             // Debug the current state
                             console.log(`Pause/Resume button clicked - Current paused state: ${player.paused}`);
                             
-                            // Get the nowplaying message information
-                            const messageInfo = client.nowPlayingMessages.get(guild.id);
-                            
-                            // First, check if the player is already paused
+                            // Await the pause/resume operation and check the updated state
+                            let newPausedState;
                             if (player.paused) {
-                                // Currently paused, so resume it
-                                console.log("Player is paused, resuming playback");
                                 await player.pause(false);
-                                await safeReply(interaction, { 
-                                    content: 'Resumed the playback!',
-                                    ephemeral: true 
+                                newPausedState = player.paused;
+                            } else {
+                                await player.pause(true);
+                                newPausedState = player.paused;
+                            }
+
+                            // Wait a short moment to allow state to propagate (Kazagumo/Lavalink can be async)
+                            await new Promise(res => setTimeout(res, 200));
+                            // Re-fetch the player in case the state updated
+                            const updatedPlayer = client.kazagumo.players.get(guild.id);
+                            const actuallyPaused = updatedPlayer ? updatedPlayer.paused : newPausedState;
+
+                            // Provide accurate feedback
+                            if (actuallyPaused) {
+                                await safeReply(interaction, {
+                                    content: 'Music is paused.',
+                                    ephemeral: true
                                 });
                             } else {
-                                // Currently playing, so pause it
-                                console.log("Player is playing, pausing playback");
-                                await player.pause(true);
-                                await safeReply(interaction, { 
-                                    content: 'Paused the playback!',
-                                    ephemeral: true 
+                                await safeReply(interaction, {
+                                    content: 'Music is resumed.',
+                                    ephemeral: true
                                 });
                             }
-                            
+
                             // Update the button's label if we have a message
+                            const messageInfo = client.nowPlayingMessages.get(guild.id);
                             if (messageInfo) {
                                 try {
                                     const messageChannel = client.channels.cache.get(messageInfo.channelId);
@@ -199,67 +280,52 @@ module.exports = {
                                         if (message && message.editable) {
                                             // Keep the label as "Pause/Resume" for consistency
                                             const newLabel = "Pause/Resume";
-                                            
-                                            // Create new action rows with updated button label
                                             const updatedRows = [];
-                                            
-                                            // Process each existing row in the message
                                             for (const row of message.components) {
                                                 const newRow = new ActionRowBuilder();
                                                 const newComponents = [];
-                                                
-                                                // Process each component in the row
                                                 for (const component of row.components) {
                                                     if (component.type === 2) { // Button type
-                                                        // Create a new button based on the existing one
                                                         const newButton = new ButtonBuilder()
                                                             .setCustomId(component.customId)
                                                             .setStyle(component.style);
-                                                        
-                                                        // If this is the pause/resume button, update its label
                                                         if (component.customId === 'pauseresume') {
                                                             newButton.setLabel(newLabel);
                                                         } else {
                                                             newButton.setLabel(component.label);
                                                         }
-                                                        
                                                         newComponents.push(newButton);
                                                     } else if (component.type === 3) { // Select menu type
-                                                        // Copy the select menu as is
                                                         const selectMenu = new StringSelectMenuBuilder()
                                                             .setCustomId(component.customId)
                                                             .setPlaceholder(component.placeholder)
                                                             .addOptions(component.options);
-                                                        
                                                         newRow.addComponents(selectMenu);
                                                     }
                                                 }
-                                                
-                                                // If we have buttons to add, add them to the row
                                                 if (newComponents.length > 0) {
                                                     newRow.addComponents(newComponents);
                                                 }
-                                                
-                                                // Add the row if it has components
                                                 if (newRow.components && newRow.components.length > 0) {
                                                     updatedRows.push(newRow);
                                                 }
                                             }
-                                            
-                                            // Edit the message with the updated rows
                                             if (updatedRows.length > 0) {
                                                 await message.edit({ components: updatedRows }).catch(() => {});
                                             }
                                         }
                                     }
                                 } catch (error) {
-                                    // Log error but don't break functionality
                                     console.error("Error updating pause/resume button:", error.message);
                                 }
                             }
                         } catch (error) {
-                            // Silent error handling
+                            // Error handling for pause/resume
                             console.error("Error in pauseresume button:", error);
+                            await safeReply(interaction, {
+                                content: 'An error occurred while toggling pause/resume. Please try again.',
+                                ephemeral: true
+                            });
                         }
                         break;
                     
@@ -558,30 +624,6 @@ module.exports = {
                         }
                         break;
                         
-                    case 'replay':
-                        try {
-                            // Get the current track
-                            const currentTrack = player.queue.current;
-                            if (!currentTrack) {
-                                await interaction.reply({
-                                    content: 'No track is currently playing!',
-                                    ephemeral: true
-                                }).catch(() => {});
-                                break;
-                            }
-                            
-                            // Replay the current track by seeking to position 0
-                            await player.seek(0);
-                            
-                            await interaction.reply({
-                                content: `Replaying track: **${currentTrack.title}**`,
-                                ephemeral: true
-                            }).catch(() => {});
-                        } catch (error) {
-                            // Silent error handling
-                        }
-                        break;
-                        
                     default:
                         try {
                             await interaction.reply({ 
@@ -613,19 +655,23 @@ module.exports = {
                             const player = client.kazagumo.players.get(guild.id);
                             if (player) {
                                 player.destroy();
-                                await interaction.reply({
+                                await safeReply(interaction, {
                                     content: 'Left the voice channel and cleared the queue!',
                                     ephemeral: true
-                                }).catch(() => {});
+                                });
                             } else {
                                 // No player, so just send a message
-                                await interaction.reply({
+                                await safeReply(interaction, {
                                     content: 'I am not in a voice channel!',
                                     ephemeral: true
-                                }).catch(() => {});
+                                });
                             }
                         } catch (error) {
-                            // Silent error handling
+                            // Always handle errors gracefully
+                            await safeReply(interaction, {
+                                content: 'An error occurred while trying to leave the channel.',
+                                ephemeral: true
+                            });
                         }
                         break;
                         
@@ -733,55 +779,21 @@ Here are the main commands you can use:
 
                     // Handle 'none' selection (clear filters)
                     if (selectedFilter === 'none') {
-                        // Store the current playback state
-                        const wasPlaying = player.playing;
-                        const currentPosition = player.position;
-                        const currentTrack = player.queue.current;
-                        
                         // Clear all filters
                         const success = await clearFilters(player);
-                        
-                        if (success) {
-                            // Ensure music is still playing
-                            if (wasPlaying && !player.playing && currentTrack) {
-                                await player.pause(false);
-                            }
-                            
-                            await safeReply(interaction, {
-                                content: 'All filters have been cleared! Music will continue playing.',
-                                ephemeral: true
-                            });
-                        } else {
-                            await safeReply(interaction, {
-                                content: 'Failed to clear filters, but music will continue playing.',
-                                ephemeral: true
-                            });
-                        }
+                        // Send acknowledgment immediately
+                        await safeReply(interaction, {
+                            content: success ? 'All filters have been cleared! Music will continue playing.' : 'Failed to clear filters, but music will continue playing.',
+                            ephemeral: true
+                        });
                     } else {
-                        // Store the current playback state
-                        const wasPlaying = player.playing;
-                        const currentPosition = player.position;
-                        const currentTrack = player.queue.current;
-                        
                         // Apply the selected filter
                         const success = await applyFilter(player, selectedFilter);
-
-                        if (success) {
-                            // Ensure music is still playing
-                            if (wasPlaying && !player.playing && currentTrack) {
-                                await player.pause(false);
-                            }
-                            
-                            await safeReply(interaction, {
-                                content: `Applied the ${getFilterDisplayName(selectedFilter)} filter! Music will continue playing.`,
-                                ephemeral: true
-                            });
-                        } else {
-                            await safeReply(interaction, {
-                                content: `Failed to apply the filter. Music will continue playing normally.`,
-                                ephemeral: true
-                            });
-                        }
+                        // Send acknowledgment immediately
+                        await safeReply(interaction, {
+                            content: success ? `Applied the ${getFilterDisplayName(selectedFilter)} filter! Music will continue playing.` : `Failed to apply the filter. Music will continue playing normally.`,
+                            ephemeral: true
+                        });
                     }
                 } catch (error) {
                     console.error("Error in filter application:", error);
