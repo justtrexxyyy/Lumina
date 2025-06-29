@@ -946,17 +946,10 @@ Here are the main commands you can use:
                     
                 // Keep backward compatibility with old 'pauseresume' button for a while
                 case 'pauseresume':
-                    // Simple toggle approach
-                    const isPaused = player.paused;
-                    player.pause(!isPaused);
-                    
-                    console.log(`Legacy pauseresume button used. Was paused: ${isPaused}, Now paused: ${player.paused}`);
-                    
-                    return interaction.reply({ 
-                        content: player.paused ? 
-                            'Paused the music! Use the Resume button to continue.' : 
-                            'Resumed the music! Use the Pause button to pause again.', 
-                        ephemeral: true 
+                    // Legacy handler removed. All pause/resume logic is now in events/interactionCreate.js for reliability.
+                    return interaction.reply({
+                        content: 'Pause/Resume button logic has been updated. Please use the new controls.',
+                        ephemeral: true
                     });
                     
                 case 'skip':
