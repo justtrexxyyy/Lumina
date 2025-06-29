@@ -17,6 +17,9 @@ const config = require('./config');
 const { formatDuration } = require('./utils/formatters');
 const { createEmbed } = require('./utils/embeds');
 const logger = require('./utils/logger');
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // Add startup debugging logs
 console.log('Starting Discord Music Bot...');
@@ -1280,3 +1283,6 @@ client.login(process.env.DISCORD_TOKEN)
 
         process.exit(1); // Exit with error code
     });
+
+app.get('/', (req, res) => res.send('Bot is running!'));
+app.listen(PORT, () => console.log(`Express server listening on port ${PORT}`));
