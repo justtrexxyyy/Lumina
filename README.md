@@ -21,7 +21,7 @@ A powerful, modern Discord music bot for seamless audio streaming, advanced filt
 
 1. 📥 **Clone the repository**
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/Unknownzop/Audic.git
    cd Audic-FIxed
    ```
 2. 📦 **Install dependencies**
@@ -90,8 +90,8 @@ Enjoy your music experience! 🎧
 
 1. **Clone the repository**  
    ```bash
-   git clone https://github.com/Unknownz/MusicBot.git
-   cd MusicBot
+   git clone https://github.com/Unknownz/Audic.git
+   cd Audic
    
 
 2. **Set up environment variables**  
