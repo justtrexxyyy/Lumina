@@ -76,11 +76,11 @@ A powerful, modern Discord music bot for seamless audio streaming, advanced filt
 
 ---
 
-## 🙏 Thanks & Support
+## 🙏 Thanks To
 
 Special thanks to **HX Dev** for their help in fixing, optimizing, and improving the bot's features and user experience! 💡
 
-For support or to contact the author, reach out to [HX Dev](https://discordapp.com/users/655010590980309013) on Discord. 💬
+You can reach out to [HX Dev](https://discordapp.com/users/655010590980309013) on Discord. 💬
 
 ---
 
