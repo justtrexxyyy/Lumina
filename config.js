@@ -1,10 +1,10 @@
 
 module.exports = {
-    botName: 'Audic',
+    botName: 'Lumina',
     botDescription: 'Your ultimate music bot for seamless audio streaming on Discord.',
     embedColor: '#7289DA',
-    supportServer: process.env.SUPPORT_SERVER || 'https://discord.gg/76W85cu3Uy',
-    botLogo: 'https://i.imgur.com/aSN4yCn.png',
+    supportServer: process.env.SUPPORT_SERVER || 'https://discord.gg/rw7pGzzjBF',
+    botLogo: 'https://cdn.discordapp.com/attachments/1380506143746560097/1390878111800754266/standard_2.gif?ex=6869dbaf&is=68688a2f&hm=ff2adac22fe1f500d9a076fd4cdcb70b22a5223ac20efb54ae9ae5bf12d22c54&',
     genius: {
         apiKey: process.env.GENIUS_API_KEY,
         clientToken: process.env.GENIUS_CLIENT_TOKEN,
